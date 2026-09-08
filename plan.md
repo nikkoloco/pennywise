@@ -341,9 +341,27 @@ and landed in the database.**
 - Export runs through a server action returning a string, so there is no public download
   URL to leak. CSV escaping verified against a note containing both a comma and quotes.
 
-**Phase 8 — Auth hardening**
-PIN gate with rate limiting, session rotation, token scoping, security headers.
-*Done when:* the deployed URL is not usable by a stranger who has the link.
+**Phase 8 — Auth hardening** — DONE
+PIN gate with lockout, httpOnly session cookie, security headers.
+*Done when:* the deployed URL is not usable by a stranger who has the link. **Verified:
+every app route redirects to `/lock` without a session, and the lockout escalates.**
+
+- Middleware denies by default and allows a short list, so a new route is private without
+  anyone remembering to protect it. Server action POSTs get a 401 rather than a redirect,
+  which a fetch would silently swallow.
+- PINs are scrypt-hashed with a per-PIN salt and compared in constant time. Six wrong
+  entries lock the account for escalating minutes; the lock lives in the users row, so it
+  survives across serverless instances where an in-memory counter would not.
+- `lib/session.ts` (jose, edge-safe) is deliberately separate from `lib/pin.ts`
+  (node:crypto). Middleware runs on the edge runtime, and importing PIN hashing there
+  brought the whole app down with "Native module not found: node:crypto".
+- The tabbed screens moved into an `(app)` route group with their own layout. Hiding the
+  tab bar with a `usePathname` check in the root layout caused a hydration mismatch.
+- Deviation: no rate limit on `/api/v1/log`. Its token is 24 random bytes, so guessing is
+  not the threat; a limiter there would add moving parts against an attack that cannot
+  happen. The six-digit PIN is the guessable secret, and that is where the lockout went.
+- The service worker no longer registers in development. Caching `/_next/static` by URL
+  served stale CSS, because Turbopack reuses filenames while their contents change.
 
 ---
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ExportButtons } from "@/components/settings/ExportButtons";
+import { LockButton } from "@/components/settings/LockButton";
 import { Card, SectionLabel } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 
@@ -69,9 +70,13 @@ export default function SettingsPage() {
       </section>
 
       <section className="px-6">
+        <LockButton />
+      </section>
+
+      <section className="px-6">
         <SectionLabel>Coming</SectionLabel>
         <p className="mt-2 text-sm text-sky-300">
-          Category and quick-tap editors, and the PIN gate in Phase 8.
+          Category and quick-tap editors.
         </p>
       </section>
     </main>

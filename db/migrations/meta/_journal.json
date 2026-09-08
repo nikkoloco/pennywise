@@ -15,6 +15,13 @@
       "when": 1788865675992,
       "tag": "0001_sturdy_network",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788871587019,
+      "tag": "0002_bizarre_inertia",
+      "breakpoints": true
     }
   ]
 }

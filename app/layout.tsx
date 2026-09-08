@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorker } from "@/components/pwa/ServiceWorker";
-import { TabBar } from "@/components/ui/TabBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -34,11 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        {/* Clears the fixed tab bar plus the home indicator beneath it. */}
-        <div className="flex flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+4.5rem)]">
-          {children}
-        </div>
-        <TabBar />
+        {children}
         <ServiceWorker />
       </body>
     </html>
