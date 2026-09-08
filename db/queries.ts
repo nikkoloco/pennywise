@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "./index";
-import { categories, events, expenses, quickTaps } from "./schema";
+import { apiTokens, categories, events, expenses, quickTaps } from "./schema";
 
 type Range = { start: Date; end: Date };
 
@@ -70,4 +70,18 @@ export async function getEvents(userId: string) {
     .from(events)
     .where(and(eq(events.userId, userId), eq(events.isArchived, false)))
     .orderBy(asc(events.eventDate));
+}
+
+export async function getApiTokens(userId: string) {
+  return db
+    .select({
+      id: apiTokens.id,
+      name: apiTokens.name,
+      createdAt: apiTokens.createdAt,
+      lastUsedAt: apiTokens.lastUsedAt,
+      revokedAt: apiTokens.revokedAt,
+    })
+    .from(apiTokens)
+    .where(eq(apiTokens.userId, userId))
+    .orderBy(desc(apiTokens.createdAt));
 }

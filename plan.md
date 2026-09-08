@@ -282,12 +282,24 @@ Donut by category, bar by period, period switcher, habits strip, chart-driven fi
 - Periods still running compare against the same number of elapsed days of the previous
   period, matching the calendar's rule.
 
-**Phase 5 — Lock-screen logging**
-`POST /api/v1/log` with bearer-token auth, Zod validation, and natural-language amount
-parsing. In-app Shortcuts setup page that generates a ready-to-import Shortcut with your
-token embedded, plus copy-paste instructions for Back Tap, Lock Screen widget, and Siri
-phrases. Token issue/revoke UI.
-*Done when:* "Hey Siri, log two fifty for lunch" writes a row with the phone locked.
+**Phase 5 — Lock-screen logging** — DONE
+`POST /api/v1/log` with bearer-token auth and Zod validation, plus an in-app setup page
+with copy-paste Shortcut instructions and token issue/revoke.
+*Done when:* a Shortcut writes a row with the phone locked. **Endpoint verified across
+nine cases: valid, messy input, bad category, zero, negative, missing field, absent
+token, wrong token, and revoked token.**
+
+- Tokens are `pw_` plus 24 random bytes, stored only as a SHA-256 hash and shown once.
+  Revocation is enforced on every request.
+- Amounts accept numbers or strings, so "₱1,250.50" from a dictated input lands as
+  125050 centavos. Categories match without case sensitivity; an unknown one returns the
+  valid list rather than a bare failure.
+- Deviation: no generated `.shortcut` file. That format is a signed binary plist Apple
+  does not document, so the page gives exact steps and copyable values instead, including
+  a ready-made `Bearer …` header string.
+- Deviation: no spelled-out number parsing ("two fifty"). The Shortcut asks for a Number,
+  which is reliable, where transcribing words is not.
+- Rate limiting is deliberately left to Phase 8 with the rest of the hardening.
 
 **Phase 6 — Events**
 Event CRUD, attach-expense-to-event, progress rings, countdowns, Home banner, recurring

@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { SWATCH_COUNT } from "@/db/defaults";
-import { categories, expenses, quickTaps } from "@/db/schema";
+import { apiTokens, categories, expenses, quickTaps } from "@/db/schema";
+import { generateToken, hashToken } from "@/lib/tokens";
 import { currentUser } from "@/lib/user";
 
 const logSchema = z.object({
@@ -95,4 +96,32 @@ async function createCategory(userId: string, name: string, emoji: string) {
     .returning({ id: categories.id });
 
   return created.id;
+}
+
+/**
+ * Creates a Shortcut token. The plaintext is returned exactly once here and
+ * never stored, so losing it means issuing a new one.
+ */
+export async function createApiToken(name: string) {
+  const label = z.string().trim().min(1).max(40).parse(name);
+  const user = await currentUser();
+  const token = generateToken();
+
+  await db.insert(apiTokens).values({
+    userId: user.id,
+    name: label,
+    tokenHash: hashToken(token),
+  });
+
+  revalidatePath("/settings/shortcuts");
+  return token;
+}
+
+export async function revokeApiToken(id: string) {
+  const user = await currentUser();
+  await db
+    .update(apiTokens)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(apiTokens.id, z.uuid().parse(id)), eq(apiTokens.userId, user.id)));
+  revalidatePath("/settings/shortcuts");
 }
