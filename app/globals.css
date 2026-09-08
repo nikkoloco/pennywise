@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
+/**
+ * Pennywise palette.
+ *
+ * Ground is deep navy, structure is light blue, and yellow is reserved almost
+ * entirely for money and primary actions so the eye lands on the number first.
+ * Umber is reserved for future events, which keeps "money spent" and "money
+ * planned" visually separate everywhere in the app.
+ */
+@theme {
+  /* Ground - dark blues */
+  --color-ink-900: #060b1c;
+  --color-ink-800: #0a1330;
+  --color-ink-700: #101b45;
+  --color-ink-600: #17275e;
+  --color-ink-500: #21377f;
+
+  /* Structure - light blues */
+  --color-sky-400: #4c8be8;
+  --color-sky-300: #7fb2f3;
+  --color-sky-200: #afd2fa;
+  --color-sky-100: #dcebff;
+
+  /* Accent - money, CTAs, today */
+  --color-gold-500: #ffc81e;
+  --color-gold-400: #ffd84d;
+  --color-gold-300: #ffe894;
+
+  /* Warm neutral - future events */
+  --color-umber-700: #3a2618;
+  --color-umber-500: #5c3b22;
+  --color-umber-300: #a97a52;
+
+  /* Absolutes */
+  --color-void: #000000;
+  --color-paper: #ffffff;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+
+  --radius-card: 20px;
+  --radius-sheet: 28px;
+}
+
+/**
+ * Category swatch ramp. Fixed order spanning sky to gold to umber so charts stay
+ * on-palette regardless of which categories exist.
+ */
+@theme {
+  --color-swatch-1: #4c8be8;
+  --color-swatch-2: #7fb2f3;
+  --color-swatch-3: #38bdd8;
+  --color-swatch-4: #5fd3a6;
+  --color-swatch-5: #afd2fa;
+  --color-swatch-6: #ffc81e;
+  --color-swatch-7: #ffd84d;
+  --color-swatch-8: #f0913c;
+  --color-swatch-9: #a97a52;
+  --color-swatch-10: #5c3b22;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-ink-900);
+  color: var(--color-sky-100);
+  font-family: var(--font-sans);
+  /* Amounts are the hero of every screen; keep digits from shifting width. */
+  font-variant-numeric: tabular-nums;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Respect the iPhone notch and home indicator once installed to the Home Screen. */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
