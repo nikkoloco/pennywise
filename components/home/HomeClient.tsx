@@ -1,13 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
 import { createQuickTap, deleteExpense, logExpense } from "@/app/actions";
 import { NewTileSheet } from "@/components/home/NewTileSheet";
 import { TodayList } from "@/components/home/TodayList";
-import { LogSheet, type CategoryOption } from "@/components/keypad/LogSheet";
+import {
+  LogSheet,
+  type CategoryOption,
+  type EventOption,
+} from "@/components/keypad/LogSheet";
 import { Amount } from "@/components/ui/Amount";
 import { Card, SectionLabel } from "@/components/ui/Card";
 import { TapTile } from "@/components/ui/TapTile";
+import { countdownLabel } from "@/lib/events";
 import { formatMinor } from "@/lib/money";
 
 export type Entry = {
@@ -27,18 +33,35 @@ type Tile = {
   categoryId: string;
 };
 
+export type Banner = {
+  emoji: string;
+  name: string;
+  daysAway: number;
+  budgetMinor: number;
+  spentMinor: number;
+};
+
 type Props = {
   tiles: Tile[];
   categories: CategoryOption[];
+  events: EventOption[];
   today: Entry[];
   monthTotal: number;
+  banner: Banner | null;
 };
 
 type Optimistic =
   | { kind: "add"; entry: Entry }
   | { kind: "remove"; id: string };
 
-export function HomeClient({ tiles, categories, today, monthTotal }: Props) {
+export function HomeClient({
+  tiles,
+  categories,
+  events,
+  today,
+  monthTotal,
+  banner,
+}: Props) {
   const [, startTransition] = useTransition();
   const [keypadFor, setKeypadFor] = useState<string | null>(null);
   const [addingTile, setAddingTile] = useState(false);
@@ -54,7 +77,12 @@ export function HomeClient({ tiles, categories, today, monthTotal }: Props) {
   const dayTotal = entries.reduce((n, e) => n + e.amountMinor, 0);
   const monthWithPending = monthTotal - today.reduce((n, e) => n + e.amountMinor, 0) + dayTotal;
 
-  function log(amountMinor: number, categoryId: string, note: string) {
+  function log(
+    amountMinor: number,
+    categoryId: string,
+    note: string,
+    eventId: string | null = null,
+  ) {
     const category = categories.find((c) => c.id === categoryId)!;
     startTransition(async () => {
       applyOptimistic({
@@ -68,7 +96,7 @@ export function HomeClient({ tiles, categories, today, monthTotal }: Props) {
           categoryEmoji: category.emoji,
         },
       });
-      await logExpense({ categoryId, amountMinor, note: note || undefined });
+      await logExpense({ categoryId, amountMinor, note: note || undefined, eventId });
     });
   }
 
@@ -111,6 +139,26 @@ export function HomeClient({ tiles, categories, today, monthTotal }: Props) {
         </div>
       </section>
 
+      {banner && (
+        <section className="px-6">
+          <Link href="/events" className="block">
+            <Card variant="event" className="flex items-center gap-3">
+              <span className="text-2xl">{banner.emoji}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-gold-300">
+                  {banner.name}
+                </p>
+                <p className="text-xs text-umber-300">
+                  {countdownLabel(banner.daysAway)} ·{" "}
+                  {formatMinor(banner.spentMinor)} of{" "}
+                  {formatMinor(banner.budgetMinor)}
+                </p>
+              </div>
+            </Card>
+          </Link>
+        </section>
+      )}
+
       <section className="px-6">
         <div className="grid grid-cols-3 gap-3">
           {tiles.map((tile) => (
@@ -143,6 +191,7 @@ export function HomeClient({ tiles, categories, today, monthTotal }: Props) {
         open={keypadFor !== null}
         onClose={() => setKeypadFor(null)}
         categories={categories}
+        events={events}
         initialCategoryId={keypadFor}
         onSubmit={log}
       />

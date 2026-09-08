@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { db } from "./index";
 import { apiTokens, categories, events, expenses, quickTaps } from "./schema";
 
@@ -84,4 +84,19 @@ export async function getApiTokens(userId: string) {
     .from(apiTokens)
     .where(eq(apiTokens.userId, userId))
     .orderBy(desc(apiTokens.createdAt));
+}
+
+/**
+ * Every expense attributed to an event. Cycle filtering happens in code, since
+ * an annual event's window depends on its own next occurrence.
+ */
+export async function getEventSpend(userId: string) {
+  return db
+    .select({
+      eventId: expenses.eventId,
+      amountMinor: expenses.amountMinor,
+      spentAt: expenses.spentAt,
+    })
+    .from(expenses)
+    .where(and(eq(expenses.userId, userId), isNotNull(expenses.eventId)));
 }

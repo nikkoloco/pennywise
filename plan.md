@@ -301,10 +301,24 @@ token, wrong token, and revoked token.**
   which is reliable, where transcribing words is not.
 - Rate limiting is deliberately left to Phase 8 with the rest of the hardening.
 
-**Phase 6 — Events**
-Event CRUD, attach-expense-to-event, progress rings, countdowns, Home banner, recurring
+**Phase 6 — Events** — DONE
+Event CRUD, attach-expense-to-event, progress bars, countdowns, Home banner, recurring
 annual rollover.
-*Done when:* an event budget tracks spend against it correctly.
+*Done when:* an event budget tracks spend against it correctly. **Verified, including the
+cycle boundary and the over-budget state.**
+
+- Annual events roll forward by derivation, never by writing to the row. The next
+  occurrence is computed from the anchor date, so nothing mutates on a read path and a
+  missed year cannot corrupt the record. Eight occurrence cases pass, including a
+  29 February anchor normalising to 1 March in a common year.
+- Spend on an annual event counts only since its last occurrence, so this year's birthday
+  is not judged against every birthday ever logged. Confirmed: with ₱312 attached across
+  two cycles, the card correctly reported ₱212.
+- Over budget turns the bar orange and reads "₱112.00 over" rather than clamping silently.
+- The Home banner only appears for a plan within 14 days, and shares one builder with the
+  Events screen so the two can never disagree about a countdown.
+- Deviation: progress bars rather than rings. A bar reads the same at a glance, reuses the
+  month-total component, and leaves the card compact.
 
 **Phase 7 — Offline + polish**
 Serwist service worker, IndexedDB outbox so taps queue with no signal, background sync,

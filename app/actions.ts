@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { SWATCH_COUNT } from "@/db/defaults";
-import { apiTokens, categories, expenses, quickTaps } from "@/db/schema";
+import { apiTokens, categories, events, expenses, quickTaps } from "@/db/schema";
+import { EVENT_COLORS } from "@/lib/events";
 import { generateToken, hashToken } from "@/lib/tokens";
 import { currentUser } from "@/lib/user";
 
@@ -13,10 +14,12 @@ const logSchema = z.object({
   categoryId: z.uuid(),
   amountMinor: z.number().int().positive(),
   note: z.string().trim().max(140).optional(),
+  /** Optional roll-up against a planned event, e.g. a trip. */
+  eventId: z.uuid().nullable().optional(),
 });
 
 export async function logExpense(input: z.infer<typeof logSchema>) {
-  const { categoryId, amountMinor, note } = logSchema.parse(input);
+  const { categoryId, amountMinor, note, eventId } = logSchema.parse(input);
   const user = await currentUser();
 
   await db.insert(expenses).values({
@@ -24,10 +27,12 @@ export async function logExpense(input: z.infer<typeof logSchema>) {
     categoryId,
     amountMinor,
     note: note || null,
+    eventId: eventId ?? null,
     spentAt: new Date(),
   });
 
   revalidatePath("/");
+  revalidatePath("/events");
 }
 
 export async function deleteExpense(id: string) {
@@ -124,4 +129,40 @@ export async function revokeApiToken(id: string) {
     .set({ revokedAt: new Date() })
     .where(and(eq(apiTokens.id, z.uuid().parse(id)), eq(apiTokens.userId, user.id)));
   revalidatePath("/settings/shortcuts");
+}
+
+const eventSchema = z.object({
+  name: z.string().trim().min(1).max(40),
+  emoji: z.string().trim().min(1).max(8),
+  eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  budgetMinor: z.number().int().positive(),
+  isRecurringAnnual: z.boolean(),
+});
+
+export async function createEvent(input: z.infer<typeof eventSchema>) {
+  const data = eventSchema.parse(input);
+  const user = await currentUser();
+
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(events)
+    .where(eq(events.userId, user.id));
+
+  await db.insert(events).values({
+    ...data,
+    userId: user.id,
+    color: EVENT_COLORS[count % EVENT_COLORS.length],
+  });
+
+  revalidatePath("/events");
+  revalidatePath("/");
+}
+
+export async function deleteEvent(id: string) {
+  const user = await currentUser();
+  await db
+    .delete(events)
+    .where(and(eq(events.id, z.uuid().parse(id)), eq(events.userId, user.id)));
+  revalidatePath("/events");
+  revalidatePath("/");
 }
