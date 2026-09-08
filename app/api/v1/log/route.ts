@@ -1,8 +1,8 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { apiTokens, categories, expenses } from "@/db/schema";
+import { apiAttempts, apiTokens, categories, expenses } from "@/db/schema";
 import { hashToken } from "@/lib/tokens";
 
 /**
@@ -10,6 +10,10 @@ import { hashToken } from "@/lib/tokens";
  * is what makes logging work from the Lock Screen, the Action Button, Back Tap
  * and Siri. A Shortcut on a phone is awkward to update, so this contract is
  * versioned and meant to stay put.
+ *
+ * Every request is recorded, success or failure. A Shortcut that fails from a
+ * locked phone reports nothing, so without this trail there is no way to tell a
+ * wrong token from a wrong category from a request that never arrived.
  */
 
 const bodySchema = z.object({
@@ -18,6 +22,8 @@ const bodySchema = z.object({
   /** Category name, matched case-insensitively. */
   category: z.string().min(1),
   note: z.string().max(140).optional(),
+  /** Accepted here as well as in the Authorization header. */
+  token: z.string().optional(),
   source: z.enum(["shortcut", "siri"]).default("shortcut"),
 });
 
@@ -27,34 +33,63 @@ function toMinor(input: number | string) {
   return Math.round(value * 100);
 }
 
+/** Keeps the diagnostic trail to the last 50 rows rather than growing forever. */
+async function record(status: number, message: string, userId: string | null = null) {
+  await db.insert(apiAttempts).values({ status, message, userId });
+
+  const stale = await db
+    .select({ id: apiAttempts.id })
+    .from(apiAttempts)
+    .orderBy(desc(apiAttempts.at))
+    .offset(50);
+
+  if (stale.length > 0) {
+    await db.delete(apiAttempts).where(inArray(apiAttempts.id, stale.map((r) => r.id)));
+  }
+}
+
+function fail(status: number, message: string, extra: object = {}) {
+  return Response.json({ ok: false, error: message, ...extra }, { status });
+}
+
 export async function POST(request: Request) {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    const missing = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
+    const message = `Body is missing or wrong: ${missing || "not valid JSON"}`;
+    await record(400, message);
+    return fail(400, message, { expected: { amount: 250, category: "Food" } });
+  }
+
+  // The scheme is case-insensitive per HTTP, and the body is accepted too so a
+  // Shortcut can skip headers entirely.
   const header = request.headers.get("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  const fromHeader = /^bearer\s+/i.test(header) ? header.replace(/^bearer\s+/i, "") : "";
+  const token = (fromHeader || parsed.data.token || "").trim();
+
   if (!token) {
-    return Response.json({ error: "Missing bearer token." }, { status: 401 });
+    const message = "No token. Send it as a `token` field, or a Bearer header.";
+    await record(401, message);
+    return fail(401, message);
   }
 
   const [auth] = await db
-    .select({ id: apiTokens.id, userId: apiTokens.userId })
+    .select({ id: apiTokens.id, userId: apiTokens.userId, name: apiTokens.name })
     .from(apiTokens)
     .where(and(eq(apiTokens.tokenHash, hashToken(token)), isNull(apiTokens.revokedAt)))
     .limit(1);
 
   if (!auth) {
-    return Response.json({ error: "Invalid or revoked token." }, { status: 401 });
-  }
-
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) {
-    return Response.json(
-      { error: "Expected amount and category.", detail: parsed.error.issues },
-      { status: 400 },
-    );
+    const message = "Token not recognised. It may be mistyped, cut short, or revoked.";
+    await record(401, message);
+    return fail(401, message);
   }
 
   const amountMinor = toMinor(parsed.data.amount);
   if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
-    return Response.json({ error: "Amount must be greater than zero." }, { status: 400 });
+    const message = `Amount "${parsed.data.amount}" is not a positive number.`;
+    await record(400, message, auth.userId);
+    return fail(400, message);
   }
 
   const [category] = await db
@@ -75,13 +110,9 @@ export async function POST(request: Request) {
       .from(categories)
       .where(and(eq(categories.userId, auth.userId), eq(categories.isArchived, false)));
 
-    return Response.json(
-      {
-        error: `No category named "${parsed.data.category}".`,
-        available: available.map((c) => c.name),
-      },
-      { status: 400 },
-    );
+    const message = `No category called "${parsed.data.category}".`;
+    await record(400, message, auth.userId);
+    return fail(400, message, { available: available.map((c) => c.name) });
   }
 
   await db.insert(expenses).values({
@@ -98,11 +129,20 @@ export async function POST(request: Request) {
     .set({ lastUsedAt: new Date() })
     .where(eq(apiTokens.id, auth.id));
 
-  revalidatePath("/");
+  const summary = `Logged ${(amountMinor / 100).toFixed(2)} to ${category.name}`;
+  await record(200, summary, auth.userId);
 
-  return Response.json({
-    ok: true,
-    amountMinor,
-    category: category.name,
-  });
+  revalidatePath("/");
+  revalidatePath("/events");
+
+  return Response.json({ ok: true, message: summary, amountMinor, category: category.name });
 }
+
+/** A Shortcut left on the default method lands here. Say so, rather than 405. */
+export async function GET() {
+  const message = "This endpoint needs POST. In Shortcuts, set Method to POST.";
+  await record(405, message);
+  return fail(405, message);
+}
+
+export const dynamic = "force-dynamic";

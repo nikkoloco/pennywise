@@ -168,3 +168,19 @@ export type Event = typeof events.$inferSelect;
 export type QuickTap = typeof quickTaps.$inferSelect;
 export type ApiToken = typeof apiTokens.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;
+
+/**
+ * A short diagnostic trail for the Shortcuts endpoint. A Shortcut that fails
+ * from the Lock Screen shows nothing on the phone, so the reason has to be
+ * visible somewhere; this is that somewhere. Trimmed to the most recent rows.
+ */
+export const apiAttempts = pgTable("api_attempts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  /** Null when the request never got as far as identifying anyone. */
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  status: integer("status").notNull(),
+  message: text("message").notNull(),
+});
+
+export type ApiAttempt = typeof apiAttempts.$inferSelect;

@@ -1,10 +1,11 @@
 import { headers } from "next/headers";
 import Link from "next/link";
+import { AttemptLog } from "@/components/settings/AttemptLog";
 import { CopyField } from "@/components/settings/CopyField";
 import { Step, Tap } from "@/components/settings/Step";
 import { TokenManager } from "@/components/settings/TokenManager";
 import { Card, SectionLabel } from "@/components/ui/Card";
-import { getApiTokens, getCategories } from "@/db/queries";
+import { getApiAttempts, getApiTokens, getCategories } from "@/db/queries";
 import { currentUser } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
@@ -15,13 +16,13 @@ export default async function ShortcutsPage() {
   const endpoint = `${protocol}://${host}/api/v1/log`;
 
   const user = await currentUser();
-  const [tokens, categories] = await Promise.all([
+  const [tokens, categories, attempts] = await Promise.all([
     getApiTokens(user.id),
     getCategories(user.id),
+    getApiAttempts(user.id),
   ]);
 
-  const example = categories.find((c) => c.name === "Food") ?? categories[0];
-  const exampleName = example?.name ?? "Food";
+  const categoryList = categories.map((c) => c.name).join("\n");
 
   return (
     <main className="flex flex-1 flex-col gap-6 pb-6">
@@ -50,14 +51,13 @@ export default async function ShortcutsPage() {
       <section className="px-6">
         <Card>
           <p className="text-sm text-sky-200">
-            Pennywise is a web app, so it cannot put a button on your Lock Screen
-            by itself. Apple Shortcuts can. You build one Shortcut that sends an
-            amount here, then attach it to Back Tap, the Action Button, a Lock
+            One Shortcut that asks <Tap>how much</Tap> and <Tap>what for</Tap>,
+            then sends it here. Attach it to Back Tap, the Action Button, a Lock
             Screen control or Siri.
           </p>
           <p className="mt-3 text-sm text-sky-200">
-            Do this once per category you want a fast button for. Fifteen minutes
-            now, then logging takes a second.
+            There are no headers to set up. The token goes in the body with
+            everything else, which removes the step most setups get wrong.
           </p>
         </Card>
       </section>
@@ -65,10 +65,21 @@ export default async function ShortcutsPage() {
       {/* ---------------------------------------------------------------- */}
 
       <section className="px-6">
+        <SectionLabel>What the endpoint has heard</SectionLabel>
+        <p className="mt-2 mb-3 text-sm text-sky-300">
+          Every attempt is recorded here, working or not. A Shortcut that fails
+          on a locked phone tells you nothing, so check this first.
+        </p>
+        <AttemptLog attempts={attempts} />
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+
+      <section className="px-6">
         <SectionLabel>Step 1 · Create your token</SectionLabel>
         <p className="mt-2 mb-3 text-sm text-sky-300">
-          This is the password the Shortcut uses. It is shown once, so create it
-          when you have your phone in front of you.
+          Shown once. Create it with your phone in front of you, and copy the
+          plain token — not the header version.
         </p>
         <TokenManager tokens={tokens} />
       </section>
@@ -78,111 +89,106 @@ export default async function ShortcutsPage() {
       <section className="flex flex-col gap-3 px-6">
         <SectionLabel>Step 2 · Build the Shortcut</SectionLabel>
         <p className="text-sm text-sky-300">
-          On your iPhone, open the <Tap>Shortcuts</Tap> app. If it is not
-          installed, get it free from the App Store.
+          Open the <Tap>Shortcuts</Tap> app on your iPhone. You are adding five
+          actions, in this order.
         </p>
 
         <Card>
           <ol className="flex flex-col gap-4">
             <Step n={1}>
-              Tap the <Tap>+</Tap> in the top right corner to start a new
-              Shortcut.
+              Tap <Tap>+</Tap> in the top right, then <Tap>Add Action</Tap>.
             </Step>
 
             <Step n={2}>
-              Tap <Tap>Add Action</Tap>. A search box appears.
+              Search <Tap>Ask for Input</Tap> and tap it. Then tap the word{" "}
+              <Tap>Text</Tap> beside &ldquo;Input Type&rdquo; and change it to{" "}
+              <Tap>Number</Tap>. Tap the <Tap>Prompt</Tap> box and type{" "}
+              <span className="text-gold-300">How much?</span>
+              <span className="mt-1 block text-xs text-sky-400">
+                Number matters: it gives you a keypad, and stops Siri hearing a
+                word as an amount.
+              </span>
             </Step>
 
             <Step n={3}>
-              Search for <Tap>Ask for Input</Tap> and tap it. This is what makes
-              your phone ask how much you spent.
+              Search <Tap>List</Tap> and tap it. Tap <Tap>Add new item</Tap> once
+              per category and type these in, one per item:
+              <div className="mt-2">
+                <CopyField multiline value={categoryList} />
+              </div>
+              <span className="mt-2 block text-xs text-sky-400">
+                Only add the ones you actually log by phone. A short list is
+                faster to tap on a lock screen.
+              </span>
             </Step>
 
             <Step n={4}>
-              In that action, tap the word <Tap>Text</Tap> next to
-              &ldquo;Input Type&rdquo; and change it to <Tap>Number</Tap>. Then
-              tap the <Tap>Prompt</Tap> box and type{" "}
-              <span className="text-gold-300">How much?</span>
+              Search <Tap>Choose from List</Tap> and tap it. It picks up the list
+              above automatically. Tap <Tap>Show More</Tap>, turn on{" "}
+              <Tap>Prompt</Tap>, and type{" "}
+              <span className="text-gold-300">What for?</span>
               <span className="mt-1 block text-xs text-sky-400">
-                Number matters. It gives you a keypad instead of a keyboard, and
-                stops Siri mishearing words as amounts.
+                This is the &ldquo;what did I spend it on&rdquo; step. Its answer
+                is called <Tap>Chosen Item</Tap>.
               </span>
             </Step>
 
             <Step n={5}>
-              Tap the search box again, search{" "}
-              <Tap>Get Contents of URL</Tap>, and tap it. Make sure it sits{" "}
-              <em>below</em> the Ask for Input action.
-            </Step>
-
-            <Step n={6}>
-              Tap the <Tap>URL</Tap> field in that action and paste this:
+              Search <Tap>Get Contents of URL</Tap> and tap it. Paste this into
+              its <Tap>URL</Tap> field:
               <div className="mt-2">
                 <CopyField value={endpoint} />
               </div>
             </Step>
 
+            <Step n={6}>
+              Tap <Tap>Show More</Tap> on that action, then tap <Tap>Method</Tap>{" "}
+              and change <Tap>GET</Tap> to <Tap>POST</Tap>.
+              <span className="mt-1 block text-xs text-sky-400">
+                Leave Headers empty. Skipping this step is the single most common
+                reason nothing is logged.
+              </span>
+            </Step>
+
             <Step n={7}>
-              Tap the small arrow (<Tap>&gt;</Tap>) or <Tap>Show More</Tap> at
-              the bottom of the Get Contents of URL action. It expands to reveal
-              Method, Headers and Request Body.
+              Under <Tap>Request Body</Tap>, make sure <Tap>JSON</Tap> is
+              selected. Tap <Tap>Add new field</Tap> three times:
+              <ul className="mt-2 flex flex-col gap-2 text-xs text-sky-300">
+                <li>
+                  <Tap>Text</Tap> · key <span className="text-gold-300">token</span>{" "}
+                  · value: paste your token from Step 1
+                </li>
+                <li>
+                  <Tap>Number</Tap> · key{" "}
+                  <span className="text-gold-300">amount</span> · value: tap the
+                  box, then pick <Tap>Provided Input</Tap> from the strip above
+                  the keyboard
+                </li>
+                <li>
+                  <Tap>Text</Tap> · key{" "}
+                  <span className="text-gold-300">category</span> · value: pick{" "}
+                  <Tap>Chosen Item</Tap> from that same strip
+                </li>
+              </ul>
             </Step>
 
             <Step n={8}>
-              Tap <Tap>Method</Tap> and change <Tap>GET</Tap> to{" "}
-              <Tap>POST</Tap>.
+              Search <Tap>Show Notification</Tap> and tap it. Clear the text, then
+              pick <Tap>Contents of URL</Tap> from the variable strip.
+              <span className="mt-1 block text-xs text-sky-400">
+                Do not skip this. It is what turns a silent failure into a
+                message telling you exactly what went wrong.
+              </span>
             </Step>
 
             <Step n={9}>
-              Under <Tap>Headers</Tap>, tap <Tap>Add new header</Tap>. Put this
-              in the left box:
-              <div className="mt-2 mb-2">
-                <CopyField value="Authorization" />
-              </div>
-              And in the right box, the word <span className="text-gold-300">Bearer</span>,
-              a space, then your token from Step 1. The token screen gives you
-              this whole line ready to paste.
+              Tap the name at the top, choose <Tap>Rename</Tap>, and call it{" "}
+              <span className="text-gold-300">Log spending</span>. That exact
+              name becomes the Siri phrase, so pick something you can say.
             </Step>
 
             <Step n={10}>
-              Under <Tap>Request Body</Tap>, make sure <Tap>JSON</Tap> is
-              selected, then tap <Tap>Add new field</Tap> and choose{" "}
-              <Tap>Number</Tap>.
-              <span className="mt-1 block text-xs text-sky-400">
-                Key: <span className="text-gold-300">amount</span> — then tap the
-                value box and pick <Tap>Provided Input</Tap> from the strip just
-                above the keyboard. That is the number you typed in Step 4.
-              </span>
-            </Step>
-
-            <Step n={11}>
-              Tap <Tap>Add new field</Tap> again, choose <Tap>Text</Tap>.
-              <span className="mt-1 block text-xs text-sky-400">
-                Key: <span className="text-gold-300">category</span> — value:{" "}
-                <span className="text-gold-300">{exampleName}</span>, typed
-                exactly as it appears in the list further down this page.
-              </span>
-            </Step>
-
-            <Step n={12}>
-              Optional but worth it: tap the search box, add{" "}
-              <Tap>Show Notification</Tap>, and set the text to{" "}
-              <span className="text-gold-300">Logged</span>. Without it, a
-              Shortcut run from a locked phone gives you no confirmation.
-            </Step>
-
-            <Step n={13}>
-              Tap the Shortcut&rsquo;s name at the top of the screen, choose{" "}
-              <Tap>Rename</Tap>, and call it{" "}
-              <span className="text-gold-300">Log {exampleName.toLowerCase()}</span>.
-              <span className="mt-1 block text-xs text-sky-400">
-                Pick something you can say out loud. This exact name becomes the
-                Siri phrase.
-              </span>
-            </Step>
-
-            <Step n={14}>
-              Tap <Tap>Done</Tap> in the top right.
+              Tap <Tap>Done</Tap>.
             </Step>
           </ol>
         </Card>
@@ -195,20 +201,22 @@ export default async function ShortcutsPage() {
         <Card>
           <ol className="flex flex-col gap-4">
             <Step n={1}>
-              Tap your new Shortcut in the Shortcuts app. Enter any small amount.
+              Tap the Shortcut in the Shortcuts app. Enter a small amount and
+              pick a category.
             </Step>
             <Step n={2}>
-              iOS will ask whether to allow it to send data to{" "}
+              iOS asks whether to allow it to send data to{" "}
               <span className="break-all text-gold-300">{host}</span>. Tap{" "}
-              <Tap>Allow</Tap>, and <Tap>Always Allow</Tap> if it is offered.
+              <Tap>Allow</Tap>, and <Tap>Always Allow</Tap> if offered.
               <span className="mt-1 block text-xs text-sky-400">
-                This prompt only appears the first time. If you skip it now, the
-                Shortcut will fail silently from the Lock Screen later.
+                Only asked once. Miss it and the Shortcut fails silently from the
+                Lock Screen forever after.
               </span>
             </Step>
             <Step n={3}>
-              Open Pennywise and check the entry appeared under Today. Delete it
-              with the × once you have seen it.
+              Read the notification. <span className="text-gold-300">Logged 50.00 to Food</span>{" "}
+              means it worked. Anything else names the problem — and it appears at
+              the top of this page too.
             </Step>
           </ol>
         </Card>
@@ -219,27 +227,24 @@ export default async function ShortcutsPage() {
       <section className="flex flex-col gap-3 px-6">
         <SectionLabel>Step 4 · Attach a trigger</SectionLabel>
         <p className="text-sm text-sky-300">
-          Pick one, or set up several. All four work on your iPhone 16e.
+          All four work on an iPhone 16e. Set up as many as you like.
         </p>
 
         <Card>
           <p className="text-sm font-semibold text-gold-300">
             Back Tap — tap the back of the phone twice
           </p>
-          <p className="mt-1 mb-3 text-xs text-sky-400">
-            The fastest one-handed option. Works through most cases.
-          </p>
-          <ol className="flex flex-col gap-3">
+          <ol className="mt-3 flex flex-col gap-3">
             <Step n={1}>
-              Open <Tap>Settings</Tap> → <Tap>Accessibility</Tap>.
+              <Tap>Settings</Tap> → <Tap>Accessibility</Tap> → <Tap>Touch</Tap>.
             </Step>
             <Step n={2}>
-              Tap <Tap>Touch</Tap>, then scroll to the very bottom and tap{" "}
-              <Tap>Back Tap</Tap>.
+              Scroll to the very bottom, tap <Tap>Back Tap</Tap>, then{" "}
+              <Tap>Double Tap</Tap>.
             </Step>
             <Step n={3}>
-              Tap <Tap>Double Tap</Tap>, scroll past the system options to the{" "}
-              <Tap>Shortcuts</Tap> section at the bottom, and pick your Shortcut.
+              Scroll past the system options to the <Tap>Shortcuts</Tap> list at
+              the bottom and pick yours.
             </Step>
           </ol>
         </Card>
@@ -248,19 +253,13 @@ export default async function ShortcutsPage() {
           <p className="text-sm font-semibold text-gold-300">
             Action Button — the button above the volume keys
           </p>
-          <p className="mt-1 mb-3 text-xs text-sky-400">
-            Press and hold. Best if you log one category far more than the rest.
-          </p>
-          <ol className="flex flex-col gap-3">
+          <ol className="mt-3 flex flex-col gap-3">
             <Step n={1}>
-              Open <Tap>Settings</Tap> → <Tap>Action Button</Tap>.
+              <Tap>Settings</Tap> → <Tap>Action Button</Tap>.
             </Step>
             <Step n={2}>
-              Swipe sideways through the options until you reach{" "}
-              <Tap>Shortcut</Tap>.
-            </Step>
-            <Step n={3}>
-              Tap <Tap>Choose a Shortcut</Tap> and pick yours.
+              Swipe sideways to <Tap>Shortcut</Tap>, tap{" "}
+              <Tap>Choose a Shortcut</Tap>, pick yours.
             </Step>
           </ol>
         </Card>
@@ -269,25 +268,18 @@ export default async function ShortcutsPage() {
           <p className="text-sm font-semibold text-gold-300">
             Lock Screen control — bottom corner button
           </p>
-          <p className="mt-1 mb-3 text-xs text-sky-400">
-            Replaces the flashlight or camera button on your Lock Screen.
-          </p>
-          <ol className="flex flex-col gap-3">
+          <ol className="mt-3 flex flex-col gap-3">
             <Step n={1}>
-              Press and hold on your Lock Screen until <Tap>Customise</Tap>{" "}
-              appears, then tap it. You may need to unlock with Face ID first.
+              Press and hold your Lock Screen, tap <Tap>Customise</Tap>, then{" "}
+              <Tap>Lock Screen</Tap>.
             </Step>
             <Step n={2}>
-              Tap <Tap>Lock Screen</Tap>.
+              Tap the <Tap>−</Tap> on the flashlight or camera button, then the{" "}
+              <Tap>+</Tap> that replaces it.
             </Step>
             <Step n={3}>
-              Tap the <Tap>−</Tap> on the flashlight or camera button in the
-              bottom corner to remove it, then tap the <Tap>+</Tap> that appears
-              in its place.
-            </Step>
-            <Step n={4}>
-              Search <Tap>Shortcuts</Tap> in the controls gallery, choose it, and
-              select your Shortcut. Tap <Tap>Done</Tap>.
+              Search <Tap>Shortcuts</Tap> in the gallery, pick yours, tap{" "}
+              <Tap>Done</Tap>.
             </Step>
           </ol>
         </Card>
@@ -296,14 +288,10 @@ export default async function ShortcutsPage() {
           <p className="text-sm font-semibold text-gold-300">
             Siri — hands free, screen off
           </p>
-          <p className="mt-1 mb-3 text-xs text-sky-400">
-            Nothing to set up. The Shortcut&rsquo;s name is already the phrase.
-          </p>
-          <p className="text-sm text-sky-200">
-            Say <span className="text-gold-300">&ldquo;Siri, Log {exampleName.toLowerCase()}&rdquo;</span>.
-            Siri asks &ldquo;How much?&rdquo;, you say the number, and it is
-            logged. This is the only trigger that works with the phone in your
-            pocket.
+          <p className="mt-2 text-sm text-sky-200">
+            Say <span className="text-gold-300">&ldquo;Siri, Log spending&rdquo;</span>.
+            It asks how much, then reads out the category list for you to choose.
+            The only trigger that works with the phone in your pocket.
           </p>
         </Card>
       </section>
@@ -311,82 +299,61 @@ export default async function ShortcutsPage() {
       {/* ---------------------------------------------------------------- */}
 
       <section className="flex flex-col gap-3 px-6">
-        <SectionLabel>Variant · One tap, no question</SectionLabel>
+        <SectionLabel>Variant · One tap, no questions</SectionLabel>
         <Card>
           <p className="text-sm text-sky-200">
-            For a fixed cost you pay constantly, like a jeepney fare, skip the
-            Ask for Input action entirely. Build the same Shortcut without steps
-            3 and 4, and type the amount straight into the JSON instead of using
-            Provided Input.
-          </p>
-          <p className="mt-3 text-sm text-sky-200">
-            Bound to Back Tap, that logs a fare in about a second with no screen
-            interaction at all. The body should look like this:
+            For a fixed cost you pay constantly, like a jeepney fare, build the
+            same Shortcut with only actions 5 to 8 — no Ask for Input, no List,
+            no Choose from List. Type the values straight in:
           </p>
           <div className="mt-3">
             <CopyField
               multiline
-              value={`amount  (Number)  15\ncategory (Text)   Transportation\nnote     (Text)   jeepney`}
+              value={`token    (Text)    your token\namount   (Number)  15\ncategory (Text)    Transportation\nnote     (Text)    jeepney`}
             />
           </div>
+          <p className="mt-3 text-sm text-sky-200">
+            On Back Tap, that logs a fare in about a second without looking at
+            the screen.
+          </p>
         </Card>
       </section>
 
       {/* ---------------------------------------------------------------- */}
 
       <section className="px-6">
-        <SectionLabel>Category names</SectionLabel>
-        <p className="mt-2 mb-3 text-xs text-sky-400">
-          Type one of these into the <span className="text-gold-300">category</span>{" "}
-          field. Capitalisation does not matter, spelling does.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {categories.map((c) => (
-            <span
-              key={c.id}
-              className="rounded-full bg-ink-700 px-3 py-1.5 text-xs text-sky-200"
-            >
-              {c.emoji} {c.name}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      {/* ---------------------------------------------------------------- */}
-
-      <section className="px-6">
-        <SectionLabel>If it does not work</SectionLabel>
+        <SectionLabel>If it still does not work</SectionLabel>
         <Card className="mt-3">
           <ul className="flex flex-col gap-3 text-sm text-sky-200">
             <li>
-              <Tap>Nothing happens from the Lock Screen</Tap> — you probably
-              missed the one-time permission prompt. Run the Shortcut from inside
-              the Shortcuts app once and tap Allow.
+              <Tap>Nothing at all in the list above</Tap> — the request never
+              arrived. Method is probably still GET, or the URL is mistyped.
             </li>
             <li>
-              <Tap>&ldquo;Missing bearer token&rdquo;</Tap> — the Authorization
-              header is misspelled, or the value is missing the word{" "}
-              <span className="text-gold-300">Bearer</span> and a space before
-              the token.
+              <Tap>&ldquo;This endpoint needs POST&rdquo;</Tap> — Method is GET.
+              Step 2, action 6.
             </li>
             <li>
-              <Tap>&ldquo;Invalid or revoked token&rdquo;</Tap> — the token was
-              revoked, or part of it was cut off when pasting. Create a new one
-              and paste it again.
+              <Tap>&ldquo;No token&rdquo;</Tap> — the{" "}
+              <span className="text-gold-300">token</span> field is missing or
+              misspelled in the JSON body.
             </li>
             <li>
-              <Tap>&ldquo;No category named…&rdquo;</Tap> — the category value
-              does not match. The reply lists every valid name.
+              <Tap>&ldquo;Token not recognised&rdquo;</Tap> — it was cut short
+              when pasting, or has been revoked. Create a new one.
             </li>
             <li>
-              <Tap>It asks for Face ID every time</Tap> — that is iOS protecting
-              a locked phone, and Pennywise cannot skip it. A glance is enough.
+              <Tap>&ldquo;No category called…&rdquo;</Tap> — the name does not
+              match. The reply lists every valid one.
+            </li>
+            <li>
+              <Tap>&ldquo;Body is missing or wrong&rdquo;</Tap> — Request Body is
+              not set to JSON, or a field name is misspelled.
             </li>
           </ul>
           <p className="mt-4 text-xs text-sky-400">
-            Menu wording shifts slightly between iOS releases. If a label reads a
-            little differently on your phone, the one nearest in meaning is the
-            right one.
+            Menu wording shifts between iOS releases. If a label reads slightly
+            differently, the nearest one in meaning is right.
           </p>
         </Card>
       </section>

@@ -1,6 +1,13 @@
-import { and, asc, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "./index";
-import { apiTokens, categories, events, expenses, quickTaps } from "./schema";
+import {
+  apiAttempts,
+  apiTokens,
+  categories,
+  events,
+  expenses,
+  quickTaps,
+} from "./schema";
 
 type Range = { start: Date; end: Date };
 
@@ -99,4 +106,19 @@ export async function getEventSpend(userId: string) {
     })
     .from(expenses)
     .where(and(eq(expenses.userId, userId), isNotNull(expenses.eventId)));
+}
+
+/** The diagnostic trail for the Shortcuts endpoint, newest first. */
+export async function getApiAttempts(userId: string, limit = 8) {
+  return db
+    .select({
+      id: apiAttempts.id,
+      at: apiAttempts.at,
+      status: apiAttempts.status,
+      message: apiAttempts.message,
+    })
+    .from(apiAttempts)
+    .where(or(eq(apiAttempts.userId, userId), isNull(apiAttempts.userId)))
+    .orderBy(desc(apiAttempts.at))
+    .limit(limit);
 }
