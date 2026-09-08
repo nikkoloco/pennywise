@@ -4,6 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
+import { SWATCH_COUNT } from "@/db/defaults";
 import { categories, expenses, quickTaps } from "@/db/schema";
 import { currentUser } from "@/lib/user";
 
@@ -88,7 +89,7 @@ async function createCategory(userId: string, name: string, emoji: string) {
       userId,
       name,
       emoji,
-      color: `swatch-${(count % 10) + 1}`,
+      color: `swatch-${(count % SWATCH_COUNT) + 1}`,
       sortOrder: count,
     })
     .returning({ id: categories.id });

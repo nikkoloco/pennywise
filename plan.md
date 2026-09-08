@@ -264,9 +264,23 @@ seeded two-month dataset, then cleared.**
 - `Sheet` now caps at 85dvh and scrolls internally; a busy day previously ran off the
   top of the screen, which would have hit the keypad on shorter phones too.
 
-**Phase 4 — Insights**
+**Phase 4 — Insights** — DONE
 Donut by category, bar by period, period switcher, habits strip, chart-driven filtering.
 *Done when:* week/month/year all render correctly against seeded data and empty states.
+**Verified against three seeded months, then cleared.**
+
+- Selecting a category drives the whole view at once: the donut dims other slices, the
+  bars redraw for that category, and the entry list filters.
+- Bars are blue except the heaviest bucket, which takes gold.
+- The swatch ramp grew to 12 so every default category has a distinct colour; two
+  categories sharing one are indistinguishable in the donut.
+- The swatch block needs `@theme static`. Tailwind v4 emits theme variables only where it
+  can see them used in class names, and these are referenced from chart fills, so all ten
+  were being stripped from the stylesheet and the donut rendered black.
+- Habits count only from the first day with activity. Measured from the period start, a
+  year view reported a 181-day "quiet run" for months before the app existed.
+- Periods still running compare against the same number of elapsed days of the previous
+  period, matching the calendar's rule.
 
 **Phase 5 — Lock-screen logging**
 `POST /api/v1/log` with bearer-token auth, Zod validation, and natural-language amount

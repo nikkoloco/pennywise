@@ -36,6 +36,7 @@ export async function getExpensesIn(userId: string, range: Range) {
       source: expenses.source,
       categoryName: categories.name,
       categoryEmoji: categories.emoji,
+      categoryColor: categories.color,
     })
     .from(expenses)
     .innerJoin(categories, eq(expenses.categoryId, categories.id))

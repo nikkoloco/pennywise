@@ -2,6 +2,9 @@
  * The categories a fresh Pennywise starts with. They double as the initial
  * quick-tap tiles, all amount-less so the first tap opens the keypad. Both are
  * editable data from that point on.
+ *
+ * Every default takes a distinct swatch: two categories sharing a colour are
+ * indistinguishable in the donut, which is where colour has to do real work.
  */
 export const DEFAULT_CATEGORIES = [
   { name: "Transportation", emoji: "🚍", color: "swatch-1" },
@@ -14,6 +17,9 @@ export const DEFAULT_CATEGORIES = [
   { name: "Bills", emoji: "🧾", color: "swatch-9" },
   { name: "Sports & Leisure", emoji: "⚽", color: "swatch-2" },
   { name: "Subscriptions", emoji: "🔁", color: "swatch-10" },
-  { name: "Canteen", emoji: "🍱", color: "swatch-6" },
-  { name: "Travel", emoji: "✈️", color: "swatch-1" },
+  { name: "Canteen", emoji: "🍱", color: "swatch-12" },
+  { name: "Travel", emoji: "✈️", color: "swatch-11" },
 ];
+
+/** Total swatches in the ramp, used to rotate colours for new categories. */
+export const SWATCH_COUNT = 12;

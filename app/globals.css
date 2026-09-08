@@ -45,8 +45,12 @@
 /**
  * Category swatch ramp. Fixed order spanning sky to gold to umber so charts stay
  * on-palette regardless of which categories exist.
+ *
+ * `static` is required: these are referenced as var(--color-swatch-N) from chart
+ * fills rather than from class names, so Tailwind cannot see the usage and would
+ * otherwise drop every one of them from the stylesheet.
  */
-@theme {
+@theme static {
   --color-swatch-1: #4c8be8;
   --color-swatch-2: #7fb2f3;
   --color-swatch-3: #38bdd8;
@@ -57,6 +61,8 @@
   --color-swatch-8: #f0913c;
   --color-swatch-9: #a97a52;
   --color-swatch-10: #5c3b22;
+  --color-swatch-11: #2f4f9e;
+  --color-swatch-12: #d8b26a;
 }
 
 :root {
