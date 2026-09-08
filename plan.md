@@ -216,11 +216,18 @@ the production DB. **Both verified.**
 - DB: Neon `ap-southeast-1`, all 7 tables live, same instance local and in production
 - Seeding categories and quick-taps moves to Phase 2, where the first user row is created.
 
-**Phase 1 — Design system + shell**
+**Phase 1 — Design system + shell** — DONE
 Palette tokens, typography scale, the card/sheet/button/tile primitives, bottom tab bar,
-PWA manifest, icon set, splash screens, `display: standalone`.
+PWA manifest, icon set, `display: standalone`.
 *Done when:* installs to the iOS Home Screen and opens fullscreen with correct icon and
 status-bar treatment.
+
+- App icon is a peso glyph: a P with two horizontal strokes, gold on a navy gradient,
+  hand-drawn as SVG in `public/icon.svg` and rasterised by `npm run icons`.
+- Primitives live in `components/ui`: `Amount`, `Card`, `Button`, `TapTile`, `Sheet`,
+  `TabBar`, `PageHeader`.
+- `lib/sample.ts` holds static stand-in data so the layout can be judged at realistic
+  density. Phase 2 deletes it.
 
 **Phase 2 — Logging (the core loop)**
 Quick-tap grid, keypad sheet, create/edit/delete expense via server actions, today's list,

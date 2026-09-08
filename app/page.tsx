@@ -1,65 +1,89 @@
-const SWATCHES = [
-  "bg-swatch-1",
-  "bg-swatch-2",
-  "bg-swatch-3",
-  "bg-swatch-4",
-  "bg-swatch-5",
-  "bg-swatch-6",
-  "bg-swatch-7",
-  "bg-swatch-8",
-  "bg-swatch-9",
-  "bg-swatch-10",
-];
+import { QuickTapGrid } from "@/components/home/QuickTapGrid";
+import { Amount } from "@/components/ui/Amount";
+import { Card, SectionLabel } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { formatMinor } from "@/lib/money";
+import { SAMPLE_EVENTS, SAMPLE_TODAY, SAMPLE_TODAY_TOTAL } from "@/lib/sample";
 
-/**
- * Phase 0 placeholder. Exists to prove the deploy pipeline and the palette
- * render correctly on device before any feature work lands.
- */
+const MONTH_SPENT = 1847500;
+const MONTH_LAST_PERIOD = 2210000;
+
 export default function Home() {
+  const soonest = SAMPLE_EVENTS.reduce((a, b) => (a.daysAway < b.daysAway ? a : b));
+  const monthPct = Math.min(100, (MONTH_SPENT / MONTH_LAST_PERIOD) * 100);
+
   return (
-    <main className="safe-top safe-bottom flex flex-1 flex-col justify-center gap-10 px-6 py-12">
-      <div className="relative">
-        {/* Radial glow that will sit behind the today-total on the real Home screen. */}
+    <main className="flex flex-1 flex-col gap-6 pb-6">
+      <PageHeader title="Today" subtitle="Monday, 8 September" />
+
+      <section className="relative px-6">
         <div
           aria-hidden
-          className="pointer-events-none absolute -inset-x-10 -top-16 h-48 opacity-30 blur-3xl"
+          className="pointer-events-none absolute -top-10 -left-4 h-40 w-64 opacity-25 blur-3xl"
           style={{
-            background:
-              "radial-gradient(closest-side, var(--color-sky-400), transparent)",
+            background: "radial-gradient(closest-side, var(--color-sky-400), transparent)",
           }}
         />
-        <p className="relative text-sm tracking-[0.2em] text-sky-300 uppercase">
-          Pennywise
-        </p>
-        <p className="relative mt-3 text-6xl font-extrabold text-gold-500">
-          &#8369;0<span className="text-3xl text-gold-300">.00</span>
-        </p>
-        <p className="relative mt-2 text-sm text-sky-200">
-          spent today &middot; Asia/Manila
-        </p>
-      </div>
-
-      <div className="rounded-card border border-ink-500 bg-ink-700 p-5">
-        <p className="text-sm text-sky-200">
-          Foundation is live. Logging, calendar, insights and events land in the
-          phases ahead.
-        </p>
-        <div className="mt-4 flex gap-1.5">
-          {SWATCHES.map((swatch) => (
-            <div key={swatch} className={`h-8 flex-1 rounded-md ${swatch}`} />
-          ))}
+        <div className="relative">
+          <Amount minor={SAMPLE_TODAY_TOTAL} size="hero" />
+          <p className="mt-1 text-sm text-sky-200">
+            {SAMPLE_TODAY.length} entries today
+          </p>
         </div>
-      </div>
 
-      <div className="rounded-card border border-umber-500 bg-umber-700 p-5">
-        <p className="text-xs tracking-[0.15em] text-umber-300 uppercase">
-          Planned
-        </p>
-        <p className="mt-1 text-sm text-gold-300">
-          Trips and birthdays live here, in brown, so future money never looks
-          like money you already spent.
-        </p>
-      </div>
+        <div className="relative mt-5">
+          <div className="flex items-baseline justify-between">
+            <SectionLabel>This month</SectionLabel>
+            <span className="text-sm font-bold text-sky-100">
+              {formatMinor(MONTH_SPENT)}
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink-700">
+            <div
+              className="h-full rounded-full bg-gold-500"
+              style={{ width: `${monthPct}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-sky-300">
+            {Math.round(100 - monthPct)}% under last month at this point
+          </p>
+        </div>
+      </section>
+
+      <section className="px-6">
+        <QuickTapGrid />
+      </section>
+
+      <section className="px-6">
+        <Card variant="event" className="flex items-center gap-4">
+          <span className="text-2xl">{soonest.emoji}</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gold-300">{soonest.name}</p>
+            <p className="text-xs text-umber-300">
+              in {soonest.daysAway} days &middot; {formatMinor(soonest.budgetMinor)} planned
+            </p>
+          </div>
+        </Card>
+      </section>
+
+      <section className="px-6">
+        <SectionLabel>Today</SectionLabel>
+        <ul className="mt-3 divide-y divide-ink-700">
+          {SAMPLE_TODAY.map((entry) => (
+            <li key={entry.id} className="flex items-center gap-3 py-3">
+              <span className="text-lg">{entry.emoji}</span>
+              <div className="flex-1">
+                <p className="text-sm text-sky-100">{entry.label}</p>
+                <p className="text-xs text-sky-300">
+                  {entry.note ? `${entry.note} · ` : ""}
+                  {entry.time}
+                </p>
+              </div>
+              <Amount minor={entry.minor} size="sm" tone="paper" />
+            </li>
+          ))}
+        </ul>
+      </section>
     </main>
   );
 }
