@@ -221,3 +221,6 @@ next-env.d.ts
 
 # playwright mcp scratch
 .playwright-mcp/
+
+.vercel
+.env*
