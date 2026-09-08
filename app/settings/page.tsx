@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExportButtons } from "@/components/settings/ExportButtons";
 import { Card, SectionLabel } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 
@@ -58,10 +59,19 @@ export default function SettingsPage() {
       </section>
 
       <section className="px-6">
+        <SectionLabel>Your data</SectionLabel>
+        <Card className="mt-3">
+          <p className="mb-3 text-sm text-sky-200">
+            Every expense you have logged, in a form nothing else owns.
+          </p>
+          <ExportButtons />
+        </Card>
+      </section>
+
+      <section className="px-6">
         <SectionLabel>Coming</SectionLabel>
         <p className="mt-2 text-sm text-sky-300">
-          Category and quick-tap editors, data export in Phase 7, and the PIN gate
-          in Phase 8.
+          Category and quick-tap editors, and the PIN gate in Phase 8.
         </p>
       </section>
     </main>

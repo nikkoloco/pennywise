@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
@@ -165,4 +165,51 @@ export async function deleteEvent(id: string) {
     .where(and(eq(events.id, z.uuid().parse(id)), eq(events.userId, user.id)));
   revalidatePath("/events");
   revalidatePath("/");
+}
+
+/** Escapes a CSV cell: quote it, and double any quotes inside. */
+function csvCell(value: string | number | null) {
+  const text = value === null ? "" : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Your data, in a form nothing else owns. Returned as a string so the browser
+ * saves it directly rather than exposing a public download URL.
+ */
+export async function exportData(format: "csv" | "json") {
+  const user = await currentUser();
+
+  const rows = await db
+    .select({
+      spentAt: expenses.spentAt,
+      amountMinor: expenses.amountMinor,
+      note: expenses.note,
+      source: expenses.source,
+      category: categories.name,
+      event: events.name,
+    })
+    .from(expenses)
+    .innerJoin(categories, eq(expenses.categoryId, categories.id))
+    .leftJoin(events, eq(expenses.eventId, events.id))
+    .where(eq(expenses.userId, user.id))
+    .orderBy(desc(expenses.spentAt));
+
+  const shaped = rows.map((r) => ({
+    date: r.spentAt.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }),
+    time: r.spentAt.toLocaleTimeString("en-PH", { timeZone: "Asia/Manila" }),
+    category: r.category,
+    amount: (r.amountMinor / 100).toFixed(2),
+    note: r.note ?? "",
+    event: r.event ?? "",
+    source: r.source,
+  }));
+
+  if (format === "json") return JSON.stringify(shaped, null, 2);
+
+  const header = ["date", "time", "category", "amount", "note", "event", "source"];
+  return [
+    header.join(","),
+    ...shaped.map((r) => header.map((k) => csvCell(r[k as keyof typeof r])).join(",")),
+  ].join("\n");
 }

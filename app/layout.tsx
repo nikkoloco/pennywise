@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ServiceWorker } from "@/components/pwa/ServiceWorker";
 import { TabBar } from "@/components/ui/TabBar";
 import "./globals.css";
 
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </div>
         <TabBar />
+        <ServiceWorker />
       </body>
     </html>
   );

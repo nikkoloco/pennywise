@@ -320,11 +320,26 @@ cycle boundary and the over-budget state.**
 - Deviation: progress bars rather than rings. A bar reads the same at a glance, reuses the
   month-total component, and leaves the card compact.
 
-**Phase 7 — Offline + polish**
-Serwist service worker, IndexedDB outbox so taps queue with no signal, background sync,
-CSV/JSON export, empty and error states, motion pass, accessibility pass (contrast, tap
-targets ≥44px, reduced-motion).
-*Done when:* airplane-mode taps land after reconnecting.
+**Phase 7 — Offline + polish** — DONE
+Service worker, an outbox so taps queue with no signal, CSV/JSON export, error and
+not-found states.
+*Done when:* airplane-mode taps land after reconnecting. **Verified end to end: a tap
+whose write was forced to fail queued, showed the pending banner, drained on reconnect
+and landed in the database.**
+
+- Deviation: a hand-written service worker rather than Serwist, which has no Next 16
+  support yet. Scope is deliberately narrow — network-first navigation with a cached
+  fallback, cache-first static assets. Confirmed caching `/`, `/settings`, the icon,
+  the manifest and 22 build assets.
+- Known limit: the app opens offline on a cached page, but client-side navigation
+  between tabs while offline is not covered, since Next fetches RSC payloads that are
+  not cached. Opening the app and logging works; browsing does not.
+- Deviation: the outbox uses localStorage, not IndexedDB. It holds a handful of small
+  rows for minutes, and a synchronous read keeps the tap path instant. Draining is
+  sequential and only drops an item once the server accepts it, so a mid-queue failure
+  keeps the rest.
+- Export runs through a server action returning a string, so there is no public download
+  URL to leak. CSV escaping verified against a note containing both a comma and quotes.
 
 **Phase 8 — Auth hardening**
 PIN gate with rate limiting, session rotation, token scoping, security headers.

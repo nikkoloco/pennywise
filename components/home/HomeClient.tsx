@@ -13,8 +13,10 @@ import {
 import { Amount } from "@/components/ui/Amount";
 import { Card, SectionLabel } from "@/components/ui/Card";
 import { TapTile } from "@/components/ui/TapTile";
+import { Outbox } from "@/components/pwa/Outbox";
 import { countdownLabel } from "@/lib/events";
 import { formatMinor } from "@/lib/money";
+import { queueExpense } from "@/lib/outbox";
 
 export type Entry = {
   id: string;
@@ -96,7 +98,20 @@ export function HomeClient({
           categoryEmoji: category.emoji,
         },
       });
-      await logExpense({ categoryId, amountMinor, note: note || undefined, eventId });
+      try {
+        await logExpense({ categoryId, amountMinor, note: note || undefined, eventId });
+      } catch {
+        // No signal, or the write failed. Hold it rather than lose the tap.
+        queueExpense({
+          categoryId,
+          amountMinor,
+          note: note || undefined,
+          eventId,
+          categoryName: category.name,
+          categoryEmoji: category.emoji,
+          queuedAt: Date.now(),
+        });
+      }
     });
   }
 
@@ -138,6 +153,8 @@ export function HomeClient({
           </span>
         </div>
       </section>
+
+      <Outbox />
 
       {banner && (
         <section className="px-6">
