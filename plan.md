@@ -50,7 +50,7 @@ not an accident.
 
 | Layer | Choice | Why |
 |---|---|---|
-| Framework | Next.js 15 (App Router) + React 19 | First-class on Vercel, server actions remove most API boilerplate |
+| Framework | Next.js 16 (App Router) + React 19 | First-class on Vercel, server actions remove most API boilerplate |
 | Language | TypeScript, strict | |
 | Styling | Tailwind CSS v4 | CSS-first config, design tokens live in one `@theme` block |
 | Charts | Recharts 3 | React 19 compatible, composable, easy to restyle to the palette |
