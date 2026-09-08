@@ -18,3 +18,10 @@ export function formatMinor(minor: number) {
   const { negative, whole, cents } = splitMinor(minor);
   return `${negative ? "-" : ""}${PESO}${whole}.${cents}`;
 }
+
+/** Compact form for calendar cells, where a full amount would not fit. */
+export function formatCompact(minor: number) {
+  const pesos = minor / 100;
+  if (pesos >= 1000) return `${(pesos / 1000).toFixed(1)}k`;
+  return String(Math.round(pesos));
+}

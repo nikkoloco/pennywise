@@ -244,17 +244,25 @@ optimistic UI.
 - Deviation from the original sketch: entries are deleted with a button on the row rather
   than a swipe. Swipe-to-delete and tap-to-edit are deferred to the Phase 7 polish pass.
 
-**Phase 2b — Recurring payments**
-Monthly commitments (subscriptions, rent, tuition) recorded once and materialised into
-real expenses as they come due, rather than retyped every month. A `recurring_payments`
-table plus lazy materialisation: opening the app inserts any charges whose due day has
-passed, tagged so they are distinguishable from hand-logged spend.
-*Done when:* a monthly payment logs itself on its due date without being retyped, and
-never double-posts.
+**Phase 2b — Recurring payments** — DROPPED
+Monthly commitments are logged by hand under Bills and Subscriptions like any other
+spend. No `recurring_payments` table, no auto-posting, no second class of expense to
+reason about anywhere in the app. Revisit only if retyping them ever becomes a chore.
 
-**Phase 3 — Calendar**
+**Phase 3 — Calendar** — DONE
 Month grid with heat intensity, day detail sheet, month navigation, month totals strip.
-*Done when:* a month of logged data reads correctly at a glance.
+*Done when:* a month of logged data reads correctly at a glance. **Verified against a
+seeded two-month dataset, then cleared.**
+
+- Heat runs navy through sky to gold, rescaled per month so the shape of a quiet month
+  still reads.
+- Today's ring carries a dark offset, since a gold ring on the gold "heaviest day" cell
+  was invisible.
+- A month still in progress compares against the *same stretch* of the previous month,
+  not a full month it cannot match yet.
+- Month navigation lives in the URL (`?m=YYYY-MM`), so back and forward work.
+- `Sheet` now caps at 85dvh and scrolls internally; a busy day previously ran off the
+  top of the screen, which would have hit the keypad on shorter phones too.
 
 **Phase 4 — Insights**
 Donut by category, bar by period, period switcher, habits strip, chart-driven filtering.

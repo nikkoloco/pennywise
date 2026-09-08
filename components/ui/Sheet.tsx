@@ -30,7 +30,9 @@ export function Sheet({ open, onClose, title, children }: Props) {
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 400, damping: 38 }}
-            className="safe-bottom fixed inset-x-0 bottom-0 z-50 rounded-t-sheet border-t border-ink-500 bg-ink-800 px-5 pt-3 pb-6"
+            /* Capped so a busy day, or the keypad on a short phone, scrolls
+               inside the sheet instead of running off the top of the screen. */
+            className="safe-bottom fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-sheet border-t border-ink-500 bg-ink-800 px-5 pt-3 pb-6"
           >
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-500" />
             {title && (
