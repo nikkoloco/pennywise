@@ -159,10 +159,15 @@ export default async function ShortcutsPage() {
                   · value: paste your token from Step 1
                 </li>
                 <li>
-                  <Tap>Number</Tap> · key{" "}
+                  <Tap>Text</Tap> · key{" "}
                   <span className="text-gold-300">amount</span> · value: tap the
                   box, then pick <Tap>Provided Input</Tap> from the strip above
                   the keyboard
+                  <span className="mt-1 block text-sky-400">
+                    Text, not Number. A Number field gives you a plain keypad
+                    with no variable strip, so the amount stays 0 and nothing
+                    can be logged. Pennywise reads the digits either way.
+                  </span>
                 </li>
                 <li>
                   <Tap>Text</Tap> · key{" "}
@@ -332,6 +337,13 @@ export default async function ShortcutsPage() {
             <li>
               <Tap>&ldquo;This endpoint needs POST&rdquo;</Tap> — Method is GET.
               Step 2, action 6.
+            </li>
+            <li>
+              <Tap>&ldquo;Amount arrived as 0&rdquo;</Tap> — the{" "}
+              <span className="text-gold-300">amount</span> field is typed
+              Number. Change it to Text and insert{" "}
+              <Tap>Provided Input</Tap> again. A Number field shows a keypad with
+              no variable strip, so nothing can be attached to it.
             </li>
             <li>
               <Tap>&ldquo;No token&rdquo;</Tap> — the{" "}

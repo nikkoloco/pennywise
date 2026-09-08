@@ -87,9 +87,14 @@ export async function POST(request: Request) {
 
   const amountMinor = toMinor(parsed.data.amount);
   if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
-    const message = `Amount "${parsed.data.amount}" is not a positive number.`;
+    // Zero almost always means the JSON amount field is typed Number in
+    // Shortcuts, which offers a keypad and no way to insert the variable.
+    const message =
+      amountMinor === 0
+        ? 'Amount arrived as 0. In Shortcuts, set the amount field to Text, not Number, then insert the Provided Input variable.'
+        : `Amount "${parsed.data.amount}" is not a positive number.`;
     await record(400, message, auth.userId);
-    return fail(400, message);
+    return fail(400, message, { received: parsed.data.amount });
   }
 
   const [category] = await db
