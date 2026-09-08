@@ -27,7 +27,8 @@ export const expenseSource = pgEnum("expense_source", ["app", "shortcut", "siri"
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
-  pinHash: text("pin_hash").notNull(),
+  /** Null until the PIN gate is set up in Phase 8. */
+  pinHash: text("pin_hash"),
   currency: text("currency").notNull().default("PHP"),
   timezone: text("timezone").notNull().default("Asia/Manila"),
   /** ISO weekday the week starts on: 1 = Monday. */

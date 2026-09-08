@@ -1,0 +1,72 @@
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { db } from "./index";
+import { categories, events, expenses, quickTaps } from "./schema";
+
+type Range = { start: Date; end: Date };
+
+export async function getCategories(userId: string) {
+  return db
+    .select()
+    .from(categories)
+    .where(and(eq(categories.userId, userId), eq(categories.isArchived, false)))
+    .orderBy(asc(categories.sortOrder));
+}
+
+export async function getQuickTaps(userId: string) {
+  return db
+    .select({
+      id: quickTaps.id,
+      label: quickTaps.label,
+      emoji: quickTaps.emoji,
+      amountMinor: quickTaps.amountMinor,
+      categoryId: quickTaps.categoryId,
+    })
+    .from(quickTaps)
+    .where(eq(quickTaps.userId, userId))
+    .orderBy(asc(quickTaps.sortOrder));
+}
+
+export async function getExpensesIn(userId: string, range: Range) {
+  return db
+    .select({
+      id: expenses.id,
+      amountMinor: expenses.amountMinor,
+      note: expenses.note,
+      spentAt: expenses.spentAt,
+      source: expenses.source,
+      categoryName: categories.name,
+      categoryEmoji: categories.emoji,
+    })
+    .from(expenses)
+    .innerJoin(categories, eq(expenses.categoryId, categories.id))
+    .where(
+      and(
+        eq(expenses.userId, userId),
+        gte(expenses.spentAt, range.start),
+        lte(expenses.spentAt, range.end),
+      ),
+    )
+    .orderBy(desc(expenses.spentAt));
+}
+
+export async function getTotalIn(userId: string, range: Range) {
+  const [row] = await db
+    .select({ total: sql<number>`coalesce(sum(${expenses.amountMinor}), 0)::int` })
+    .from(expenses)
+    .where(
+      and(
+        eq(expenses.userId, userId),
+        gte(expenses.spentAt, range.start),
+        lte(expenses.spentAt, range.end),
+      ),
+    );
+  return row.total;
+}
+
+export async function getEvents(userId: string) {
+  return db
+    .select()
+    .from(events)
+    .where(and(eq(events.userId, userId), eq(events.isArchived, false)))
+    .orderBy(asc(events.eventDate));
+}

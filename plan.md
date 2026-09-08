@@ -229,10 +229,28 @@ status-bar treatment.
 - `lib/sample.ts` holds static stand-in data so the layout can be judged at realistic
   density. Phase 2 deletes it.
 
-**Phase 2 — Logging (the core loop)**
-Quick-tap grid, keypad sheet, create/edit/delete expense via server actions, today's list,
+**Phase 2 — Logging (the core loop)** — DONE
+Quick-tap grid, keypad sheet, create/delete expense via server actions, today's list,
 optimistic UI.
 *Done when:* I can log a real expense in under 2 seconds and it survives a refresh.
+**Verified end to end, including the Manila timezone bucketing.**
+
+- Twelve seeded categories, each with a matching tile: Transportation, Food, Online
+  Shopping, Self-care, Fitness, Groceries, Lifestyle, Bills, Sports & Leisure,
+  Subscriptions, Canteen, Travel.
+- A trailing "+" tile adds new tiles, and creates a category alongside when none fits.
+- Amounts fill from the right in centavos, so 1-8-00 reads as 18.00 and no decimal key
+  is needed.
+- Deviation from the original sketch: entries are deleted with a button on the row rather
+  than a swipe. Swipe-to-delete and tap-to-edit are deferred to the Phase 7 polish pass.
+
+**Phase 2b — Recurring payments**
+Monthly commitments (subscriptions, rent, tuition) recorded once and materialised into
+real expenses as they come due, rather than retyped every month. A `recurring_payments`
+table plus lazy materialisation: opening the app inserts any charges whose due day has
+passed, tagged so they are distinguishable from hand-logged spend.
+*Done when:* a monthly payment logs itself on its due date without being retyped, and
+never double-posts.
 
 **Phase 3 — Calendar**
 Month grid with heat intensity, day detail sheet, month navigation, month totals strip.
