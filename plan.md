@@ -205,12 +205,16 @@ Shortcuts setup, data export (CSV/JSON), PIN change.
 Each phase is independently deployable and verifiable. I'll validate each one before
 starting the next.
 
-**Phase 0 — Foundation**
-Scaffold Next.js 15 + TS + Tailwind v4. Wire Neon + Drizzle, write the schema, run the
-first migration, seed categories and quick-taps. Deploy the empty shell to Vercel to prove
-the pipeline end to end.
-*Done when:* a live Vercel URL renders a themed placeholder and `drizzle-kit push` works
-against the production DB.
+**Phase 0 — Foundation** — DONE
+Scaffolded Next.js 16 + TS + Tailwind v4. Neon + Drizzle wired, schema written, first
+migration applied. Empty shell deployed to prove the pipeline end to end.
+*Done when:* a live Vercel URL renders a themed placeholder and migrations apply against
+the production DB. **Both verified.**
+
+- Repo: https://github.com/nikkoloco/pennywise (private, auto-deploys on push to `main`)
+- Live: https://pennywise-five-khaki.vercel.app
+- DB: Neon `ap-southeast-1`, all 7 tables live, same instance local and in production
+- Seeding categories and quick-taps moves to Phase 2, where the first user row is created.
 
 **Phase 1 — Design system + shell**
 Palette tokens, typography scale, the card/sheet/button/tile primitives, bottom tab bar,
