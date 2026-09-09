@@ -17,11 +17,13 @@ import {
   startOfWeek,
   startOfYear,
 } from "date-fns";
+import { payPeriodLabel, payPeriodRange } from "./payPeriod";
 import { TZ, now } from "./time";
 
-export type Period = "week" | "month" | "year";
+/** "cutoff" is the stretch between paydays, which is how the money actually arrives. */
+export type Period = "cutoff" | "week" | "month" | "year";
 
-export const PERIODS: Period[] = ["week", "month", "year"];
+export const PERIODS: Period[] = ["cutoff", "week", "month", "year"];
 
 /** Week starts Monday, per the user's setting. */
 const WEEK = { weekStartsOn: 1 } as const;
@@ -29,6 +31,7 @@ const WEEK = { weekStartsOn: 1 } as const;
 /** `offset` counts back from the current period: 0 is now, -1 the one before. */
 export function periodRange(period: Period, offset = 0) {
   const base = now();
+  if (period === "cutoff") return payPeriodRange(base, offset);
   if (period === "week") {
     const d = addWeeks(base, offset);
     return { start: startOfWeek(d, WEEK), end: endOfWeek(d, WEEK) };
@@ -42,7 +45,9 @@ export function periodRange(period: Period, offset = 0) {
 }
 
 export function periodLabel(period: Period, offset = 0) {
-  const { start, end } = periodRange(period, offset);
+  const range = periodRange(period, offset);
+  const { start, end } = range;
+  if (period === "cutoff") return payPeriodLabel(range);
   if (period === "week") return `${format(start, "d MMM")} – ${format(end, "d MMM")}`;
   if (period === "month") return format(start, "MMMM yyyy");
   return format(start, "yyyy");
@@ -62,6 +67,15 @@ export function bucketsFor(period: Period, offset = 0) {
     }));
   }
 
+  // A cutoff runs about a fortnight, so days still fit as bars, numbered
+  // rather than named because it spans two different weekday cycles.
+  if (period === "cutoff") {
+    return eachDayOfInterval({ start, end }).map((d) => ({
+      key: format(d, "yyyy-MM-dd"),
+      label: format(d, "d"),
+    }));
+  }
+
   if (period === "month") {
     return eachWeekOfInterval({ start, end }, WEEK).map((d) => ({
       key: format(d, "yyyy-MM-dd"),
@@ -77,7 +91,7 @@ export function bucketsFor(period: Period, offset = 0) {
 
 /** Which bucket a given day falls into, matched to `bucketsFor` keys. */
 export function bucketKeyOf(day: string, period: Period) {
-  if (period === "week") return day;
+  if (period === "week" || period === "cutoff") return day;
   if (period === "year") return day.slice(0, 7);
 
   const [y, m, d] = day.split("-").map(Number);
