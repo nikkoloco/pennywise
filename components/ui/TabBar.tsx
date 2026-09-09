@@ -8,6 +8,7 @@ const TABS = [
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/insights", label: "Insights", icon: InsightsIcon },
   { href: "/events", label: "Events", icon: EventsIcon },
+  { href: "/recurring", label: "Recurring", icon: RecurringIcon },
 ];
 
 export function TabBar() {
@@ -68,6 +69,15 @@ function InsightsIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" {...stroke}>
       <path d="M6 20v-6M12 20V7M18 20v-9" />
+    </svg>
+  );
+}
+
+function RecurringIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" {...stroke}>
+      <path d="M4 9a6 6 0 0 1 10-3l3 3M20 15a6 6 0 0 1-10 3l-3-3" />
+      <path d="M17 3v6h-6M7 21v-6h6" />
     </svg>
   );
 }
