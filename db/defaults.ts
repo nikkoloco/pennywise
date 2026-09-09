@@ -19,7 +19,9 @@ export const DEFAULT_CATEGORIES = [
   { name: "Subscriptions", emoji: "🔁", color: "swatch-10" },
   { name: "Canteen", emoji: "🍱", color: "swatch-12" },
   { name: "Travel", emoji: "✈️", color: "swatch-11" },
+  { name: "Perfume", emoji: "🌸", color: "swatch-13" },
+  { name: "Clothes", emoji: "👕", color: "swatch-14" },
 ];
 
 /** Total swatches in the ramp, used to rotate colours for new categories. */
-export const SWATCH_COUNT = 12;
+export const SWATCH_COUNT = 14;
