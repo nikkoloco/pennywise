@@ -1,11 +1,10 @@
 import { headers } from "next/headers";
 import Link from "next/link";
-import { AttemptLog } from "@/components/settings/AttemptLog";
 import { CopyField } from "@/components/settings/CopyField";
 import { Step, Tap } from "@/components/settings/Step";
 import { TokenManager } from "@/components/settings/TokenManager";
 import { Card, SectionLabel } from "@/components/ui/Card";
-import { getApiAttempts, getApiTokens, getCategories } from "@/db/queries";
+import { getApiTokens, getCategories } from "@/db/queries";
 import { currentUserId } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +15,9 @@ export default async function ShortcutsPage() {
   const endpoint = `${protocol}://${host}/api/v1/log`;
 
   const userId = await currentUserId();
-  const [tokens, categories, attempts] = await Promise.all([
+  const [tokens, categories] = await Promise.all([
     getApiTokens(userId),
     getCategories(userId),
-    getApiAttempts(userId),
   ]);
 
   // Parents each followed by their subgroups: a flat list the Shortcut can use,
@@ -67,17 +65,6 @@ export default async function ShortcutsPage() {
             everything else, which removes the step most setups get wrong.
           </p>
         </Card>
-      </section>
-
-      {/* ---------------------------------------------------------------- */}
-
-      <section className="px-6">
-        <SectionLabel>What the endpoint has heard</SectionLabel>
-        <p className="mt-2 mb-3 text-sm text-sky-300">
-          Every attempt is recorded here, working or not. A Shortcut that fails
-          on a locked phone tells you nothing, so check this first.
-        </p>
-        <AttemptLog attempts={attempts} />
       </section>
 
       {/* ---------------------------------------------------------------- */}
@@ -248,8 +235,7 @@ export default async function ShortcutsPage() {
             </Step>
             <Step n={3}>
               Read the notification. <span className="text-gold-300">Logged 50.00 to Food</span>{" "}
-              means it worked. Anything else names the problem — and it appears at
-              the top of this page too.
+              means it worked. Anything else names the problem.
             </Step>
           </ol>
         </Card>
@@ -359,8 +345,8 @@ export default async function ShortcutsPage() {
         <Card className="mt-3">
           <ul className="flex flex-col gap-3 text-sm text-sky-200">
             <li>
-              <Tap>Nothing at all in the list above</Tap> — the request never
-              arrived. Method is probably still GET, or the URL is mistyped.
+              <Tap>No notification at all</Tap> — the request never arrived.
+              Method is probably still GET, or the URL is mistyped.
             </li>
             <li>
               <Tap>&ldquo;This endpoint needs POST&rdquo;</Tap> — Method is GET.
