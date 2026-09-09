@@ -98,7 +98,7 @@ export default async function ShortcutsPage() {
       <section className="flex flex-col gap-3 px-6">
         <SectionLabel>Step 2 · Build the Shortcut</SectionLabel>
         <p className="text-sm text-sky-300">
-          Open the <Tap>Shortcuts</Tap> app on your iPhone. You are adding five
+          Open the <Tap>Shortcuts</Tap> app on your iPhone. You are adding six
           actions, in this order.
         </p>
 
@@ -193,21 +193,34 @@ export default async function ShortcutsPage() {
             </Step>
 
             <Step n={8}>
-              Search <Tap>Show Notification</Tap> and tap it. Clear the text, then
-              pick <Tap>Contents of URL</Tap> from the variable strip.
+              Search <Tap>Get Dictionary Value</Tap> and tap it. Leave{" "}
+              <Tap>Get</Tap> set to <Tap>Value</Tap>, then tap the <Tap>Key</Tap>{" "}
+              box and type <span className="text-gold-300">message</span>. It
+              picks up <Tap>Contents of URL</Tap> automatically.
+              <span className="mt-1 block text-xs text-sky-400">
+                The reply is a dictionary. Shown whole it prints the entire
+                envelope — ok, amountMinor, category and all. This pulls out the
+                one line meant to be read. Every reply carries{" "}
+                <span className="text-gold-300">message</span>, working or not.
+              </span>
+            </Step>
+
+            <Step n={9}>
+              Search <Tap>Show Notification</Tap> and tap it. Clear the text,
+              then pick <Tap>Dictionary Value</Tap> from the variable strip.
               <span className="mt-1 block text-xs text-sky-400">
                 Do not skip this. It is what turns a silent failure into a
                 message telling you exactly what went wrong.
               </span>
             </Step>
 
-            <Step n={9}>
+            <Step n={10}>
               Tap the name at the top, choose <Tap>Rename</Tap>, and call it{" "}
               <span className="text-gold-300">Log spending</span>. That exact
               name becomes the Siri phrase, so pick something you can say.
             </Step>
 
-            <Step n={10}>
+            <Step n={11}>
               Tap <Tap>Done</Tap>.
             </Step>
           </ol>
@@ -359,6 +372,22 @@ export default async function ShortcutsPage() {
               Number. Change it to Text and insert{" "}
               <Tap>Provided Input</Tap> again. A Number field shows a keypad with
               no variable strip, so nothing can be attached to it.
+            </li>
+            <li>
+              <Tap>&ldquo;The amount field arrived empty&rdquo;</Tap> — the field
+              is Text, but the variable in it resolves to nothing. Usually{" "}
+              <Tap>Shortcut Input</Tap> was picked instead of{" "}
+              <Tap>Provided Input</Tap>. They sit next to each other on the
+              variable strip, and only <Tap>Provided Input</Tap> carries the
+              answer to &ldquo;How much?&rdquo;. Check too that{" "}
+              <Tap>Ask for Input</Tap> comes before{" "}
+              <Tap>Get Contents of URL</Tap>.
+            </li>
+            <li>
+              <Tap>A notification full of braces and quotes</Tap> — nothing is
+              wrong and the spend was logged. <Tap>Show Notification</Tap> is
+              pointing at <Tap>Contents of URL</Tap>, the whole reply, rather
+              than <Tap>Dictionary Value</Tap>. Step 2, actions 8 and 9.
             </li>
             <li>
               <Tap>&ldquo;No token&rdquo;</Tap> — the{" "}
