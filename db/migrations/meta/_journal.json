@@ -64,6 +64,20 @@
       "when": 1788940635922,
       "tag": "0008_add_cutoffs_and_payday",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788944057872,
+      "tag": "0009_supplies_and_perfume",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788944106905,
+      "tag": "0010_miscellaneous_last",
+      "breakpoints": true
     }
   ]
 }

@@ -36,8 +36,14 @@ export const DEFAULT_CATEGORIES = [
   /** No tile: recurring payments have their own tab, which is where these live. */
   { name: "Subscriptions", emoji: "🔁", color: "swatch-10", children: [], tile: false },
   { name: "Travel", emoji: "✈️", color: "swatch-11", children: [] },
-  { name: "Perfume", emoji: "🌸", color: "swatch-13", children: [] },
+  { name: "Perfume", emoji: "🫧", color: "swatch-13", children: [] },
   { name: "Clothing", emoji: "👕", color: "swatch-14", children: ["Clothes", "Shoes"] },
+  {
+    name: "Supplies",
+    emoji: "🧻",
+    color: "swatch-3",
+    children: ["Household supplies", "Appliances", "Furniture"],
+  },
   { name: "Miscellaneous", emoji: "📦", color: "swatch-8", children: [] },
 ];
 
