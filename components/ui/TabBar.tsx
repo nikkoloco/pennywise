@@ -7,7 +7,7 @@ const TABS = [
   { href: "/", label: "Log", icon: LogIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/insights", label: "Insights", icon: InsightsIcon },
-  { href: "/events", label: "Events", icon: EventsIcon },
+  { href: "/events", label: "Future", icon: EventsIcon },
   { href: "/recurring", label: "Recurring", icon: RecurringIcon },
 ];
 

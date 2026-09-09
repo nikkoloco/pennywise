@@ -1,13 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createEvent, deleteEvent } from "@/app/actions";
-import { NewEventSheet } from "@/components/events/NewEventSheet";
+import { createEvent, deleteEvent, updateEvent } from "@/app/actions";
+import {
+  NewEventSheet,
+  type PlanDraft,
+  type PlanInput,
+} from "@/components/events/NewEventSheet";
 import { Amount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { countdownLabel } from "@/lib/events";
 import { formatMinor } from "@/lib/money";
+import { cutoffLabel } from "@/lib/payPeriod";
 import { monthLabel } from "@/lib/time";
 
 export type EventCard = {
@@ -21,17 +26,45 @@ export type EventCard = {
   budgetMinor: number;
   spentMinor: number;
   isRecurringAnnual: boolean;
+  cutoff: number;
 };
 
 export function EventsClient({ events }: { events: EventCard[] }) {
   const [, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<PlanDraft | null>(null);
+
+  /** One sheet serves both jobs; which it is depends on whether it was given a plan. */
+  const sheetOpen = adding || editing !== null;
+
+  function closeSheet() {
+    setAdding(false);
+    setEditing(null);
+  }
+
+  function submit(input: PlanInput) {
+    startTransition(() =>
+      editing ? updateEvent({ ...input, id: editing.id }) : createEvent(input),
+    );
+  }
+
+  function edit(card: EventCard) {
+    setEditing({
+      id: card.id,
+      name: card.name,
+      emoji: card.emoji,
+      eventMonth: card.occursOn,
+      budgetMinor: card.budgetMinor,
+      isRecurringAnnual: card.isRecurringAnnual,
+      cutoff: card.cutoff === 2 ? 2 : 1,
+    });
+  }
 
   return (
     <>
       <section className="px-6">
         <Button onClick={() => setAdding(true)} className="w-full">
-          Plan something
+          Add anticipated expenditure
         </Button>
       </section>
 
@@ -39,8 +72,8 @@ export function EventsClient({ events }: { events: EventCard[] }) {
         {events.length === 0 ? (
           <Card variant="event">
             <p className="text-sm text-gold-300">
-              Trips, birthdays and holidays go here. Give one a month and a
-              budget, then attach spending to it as it happens.
+              Trips, birthdays and holidays go here. Give one a month, a cutoff
+              and a budget, then attach spending to it as it happens.
             </p>
           </Card>
         ) : (
@@ -51,19 +84,27 @@ export function EventsClient({ events }: { events: EventCard[] }) {
 
             return (
               <Card key={event.id} variant="event">
-                <div className="flex items-start gap-3">
+                {/* The whole card is the edit affordance; Remove opts out of it. */}
+                <button
+                  type="button"
+                  onClick={() => edit(event)}
+                  className="flex w-full items-start gap-3 text-left"
+                >
                   <span className="text-2xl">{event.emoji}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-gold-300">
                       {event.name}
                     </p>
                     <p className="text-xs text-umber-300">
-                      {monthLabel(event.occursOn)} · {countdownLabel(event.monthsAway)}
+                      {monthLabel(event.occursOn)} · {cutoffLabel(event.cutoff)}
+                    </p>
+                    <p className="text-xs text-umber-300">
+                      {countdownLabel(event.monthsAway)}
                       {event.isRecurringAnnual && " · every year"}
                     </p>
                   </div>
                   <Amount minor={event.budgetMinor} size="sm" tone="gold" />
-                </div>
+                </button>
 
                 <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-umber-500">
                   <div
@@ -99,9 +140,10 @@ export function EventsClient({ events }: { events: EventCard[] }) {
       </section>
 
       <NewEventSheet
-        open={adding}
-        onClose={() => setAdding(false)}
-        onSubmit={(event) => startTransition(() => createEvent(event))}
+        open={sheetOpen}
+        onClose={closeSheet}
+        initial={editing}
+        onSubmit={submit}
       />
     </>
   );

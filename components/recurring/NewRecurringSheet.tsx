@@ -4,13 +4,14 @@ import { useState } from "react";
 import { Keypad } from "@/components/keypad/Keypad";
 import { DraftAmount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
+import { CutoffToggle } from "@/components/ui/CutoffToggle";
+import { DEFAULT_EMOJI, EmojiPicker } from "@/components/ui/EmojiPicker";
 import { Sheet } from "@/components/ui/Sheet";
-import { draftToMinor } from "@/lib/money";
-import { cutoffLabel } from "@/lib/payPeriod";
+import { draftToMinor, minorToDraft } from "@/lib/money";
 
 export type CategoryChoice = { id: string; name: string; emoji: string };
 
-export type NewRecurring = {
+export type RecurringInput = {
   name: string;
   emoji: string;
   categoryId: string;
@@ -19,16 +20,22 @@ export type NewRecurring = {
   runsForMonths: number | null;
   cutoff: 1 | 2;
   startMonth: string;
+  payOnDay: number | null;
 };
+
+export type RecurringDraft = RecurringInput & { id: string };
 
 type Props = {
   open: boolean;
   onClose: () => void;
   categories: CategoryChoice[];
-  /** The cutoff we are in now, which is the sensible default to pay on. */
+  /** The cutoff we are in now, the sensible default to pay from. */
   cutoff: number;
+  /** This month, where a new schedule counts from unless told otherwise. */
   startMonth: string;
-  onSubmit: (entry: NewRecurring) => void;
+  /** Present when correcting one that already exists. */
+  initial?: RecurringDraft | null;
+  onSubmit: (entry: RecurringInput) => void;
 };
 
 /** Common rhythms, so the usual case is a tap rather than typing a number. */
@@ -39,10 +46,16 @@ const FREQUENCIES = [
   { months: 12, label: "Yearly" },
 ];
 
-export function NewRecurringSheet({ open, onClose, ...rest }: Props) {
+export function NewRecurringSheet({ open, onClose, initial, ...rest }: Props) {
   return (
-    <Sheet open={open} onClose={onClose} title="New recurring">
-      <RecurringForm {...rest} onClose={onClose} />
+    <Sheet open={open} onClose={onClose} title={initial ? "Edit" : "New recurring"}>
+      {/* Keyed so switching between entries starts from that entry's values. */}
+      <RecurringForm
+        key={initial?.id ?? "new"}
+        initial={initial}
+        {...rest}
+        onClose={onClose}
+      />
     </Sheet>
   );
 }
@@ -51,40 +64,35 @@ function RecurringForm({
   categories,
   cutoff,
   startMonth,
+  initial,
   onSubmit,
   onClose,
 }: Omit<Props, "open">) {
-  const [name, setName] = useState("");
-  const [emoji, setEmoji] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-  const [everyMonths, setEveryMonths] = useState(1);
-  const [runsFor, setRunsFor] = useState("");
-  const [payOn, setPayOn] = useState<1 | 2>(cutoff === 1 ? 1 : 2);
+  const [name, setName] = useState(initial?.name ?? "");
+  const [emoji, setEmoji] = useState(initial?.emoji ?? DEFAULT_EMOJI);
+  const [categoryId, setCategoryId] = useState<string | null>(initial?.categoryId ?? null);
+  const [draft, setDraft] = useState(initial ? minorToDraft(initial.amountMinor) : "");
+  const [everyMonths, setEveryMonths] = useState(initial?.everyMonths ?? 1);
+  const [runsFor, setRunsFor] = useState(numberField(initial?.runsForMonths));
+  const [payOn, setPayOn] = useState<1 | 2>(initial?.cutoff ?? (cutoff === 1 ? 1 : 2));
+  const [from, setFrom] = useState(initial?.startMonth ?? startMonth);
+  const [fixedDay, setFixedDay] = useState(numberField(initial?.payOnDay));
 
   const amountMinor = draftToMinor(draft);
-  const ready = name.trim() && emoji.trim() && categoryId && amountMinor > 0;
+  const ready = name.trim() && categoryId && amountMinor > 0 && from;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
-        <input
-          value={emoji}
-          onChange={(e) => setEmoji(e.target.value)}
-          placeholder="🎬"
-          maxLength={8}
-          aria-label="Emoji"
-          className="min-h-11 w-16 rounded-2xl bg-ink-700 text-center text-xl focus:outline-none"
-        />
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Netflix"
-          maxLength={40}
-          aria-label="Name"
-          className="min-h-11 flex-1 rounded-2xl bg-ink-700 px-4 text-sm text-sky-100 placeholder:text-sky-400 focus:outline-none"
-        />
-      </div>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Netflix"
+        maxLength={40}
+        aria-label="Name"
+        className="min-h-11 rounded-2xl bg-ink-700 px-4 text-sm text-sky-100 placeholder:text-sky-400 focus:outline-none"
+      />
+
+      <EmojiPicker value={emoji} onChange={setEmoji} />
 
       <div>
         <p className="mb-2 text-xs tracking-[0.15em] text-sky-300 uppercase">Category</p>
@@ -128,38 +136,55 @@ function RecurringForm({
       </div>
 
       <div>
+        <p className="mb-1 text-xs tracking-[0.15em] text-sky-300 uppercase">
+          Counting from
+        </p>
+        <p className="mb-2 text-xs text-sky-400">
+          The month the schedule starts. Set it back for something already
+          part-paid, so a run length still ends when it really does.
+        </p>
+        <input
+          type="month"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          aria-label="Counting from"
+          className="min-h-11 w-full rounded-2xl bg-ink-700 px-4 text-sm text-sky-100 focus:outline-none"
+        />
+      </div>
+
+      <div>
         <p className="mb-1 text-xs tracking-[0.15em] text-sky-300 uppercase">Stop after</p>
         <p className="mb-2 text-xs text-sky-400">
-          Months from now. Leave it blank and it carries on indefinitely.
+          Months from the start. Leave it blank and it carries on indefinitely.
         </p>
         <input
           inputMode="numeric"
           value={runsFor}
-          onChange={(e) => setRunsFor(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+          onChange={(e) => setRunsFor(digitsOnly(e.target.value, 3))}
           placeholder="e.g. 12"
           aria-label="Stop after how many months"
           className="min-h-11 w-full rounded-2xl bg-ink-700 px-4 text-sm text-sky-100 placeholder:text-sky-400 focus:outline-none"
         />
       </div>
 
+      <CutoffToggle value={payOn} onChange={setPayOn} />
+
       <div>
-        <p className="mb-2 text-xs tracking-[0.15em] text-sky-300 uppercase">Paid on</p>
-        <div className="flex gap-2">
-          {([1, 2] as const).map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setPayOn(c)}
-              className={`min-h-11 flex-1 rounded-2xl px-3 text-sm ${
-                c === payOn
-                  ? "bg-sky-400 font-semibold text-ink-900"
-                  : "bg-ink-700 text-sky-200"
-              }`}
-            >
-              {cutoffLabel(c)}
-            </button>
-          ))}
-        </div>
+        <p className="mb-1 text-xs tracking-[0.15em] text-sky-300 uppercase">
+          On a fixed day
+        </p>
+        <p className="mb-2 text-xs text-sky-400">
+          The day of the month it is taken, when it is always the same. Leave it
+          blank if the date moves around.
+        </p>
+        <input
+          inputMode="numeric"
+          value={fixedDay}
+          onChange={(e) => setFixedDay(digitsOnly(e.target.value, 2))}
+          placeholder="e.g. 5"
+          aria-label="Day of the month it is paid"
+          className="min-h-11 w-full rounded-2xl bg-ink-700 px-4 text-sm text-sky-100 placeholder:text-sky-400 focus:outline-none"
+        />
       </div>
 
       <div>
@@ -175,20 +200,35 @@ function RecurringForm({
           if (!categoryId) return;
           onSubmit({
             name: name.trim(),
-            emoji: emoji.trim(),
+            emoji,
             categoryId,
             amountMinor,
             everyMonths,
             runsForMonths: runsFor ? Number(runsFor) : null,
             cutoff: payOn,
-            startMonth,
+            startMonth: from,
+            payOnDay: fixedDay ? clampDay(Number(fixedDay)) : null,
           });
           onClose();
         }}
         className={ready ? "" : "pointer-events-none opacity-40"}
       >
-        Add it
+        {initial ? "Save" : "Add it"}
       </Button>
     </div>
   );
+}
+
+/** An optional number arrives as null; the field it fills is a string. */
+function numberField(value: number | null | undefined) {
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function digitsOnly(value: string, max: number) {
+  return value.replace(/[^0-9]/g, "").slice(0, max);
+}
+
+/** Guards against a typed 0 or 99 reaching a column that means a day. */
+function clampDay(day: number) {
+  return Math.min(31, Math.max(1, day));
 }

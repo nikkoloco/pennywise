@@ -1,10 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createRecurring, deleteRecurring, logExpense } from "@/app/actions";
+import {
+  createRecurring,
+  deleteRecurring,
+  logExpense,
+  updateRecurring,
+} from "@/app/actions";
 import {
   NewRecurringSheet,
   type CategoryChoice,
+  type RecurringDraft,
+  type RecurringInput,
 } from "@/components/recurring/NewRecurringSheet";
 import { Amount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +28,8 @@ export type RecurringCard = {
   everyMonths: number;
   runsForMonths: number | null;
   cutoff: number;
+  startMonth: string;
+  payOnDay: number | null;
   /** Owed in the cutoff being shown. */
   due: boolean;
   /** Already settled by a logged expense inside that cutoff. */
@@ -37,6 +46,29 @@ type Props = {
 export function RecurringClient({ cards, cutoff, startMonth, categories }: Props) {
   const [, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<RecurringDraft | null>(null);
+
+  function submit(input: RecurringInput) {
+    const target = editing;
+    startTransition(() =>
+      target ? updateRecurring({ ...input, id: target.id }) : createRecurring(input),
+    );
+  }
+
+  function edit(card: RecurringCard) {
+    setEditing({
+      id: card.id,
+      name: card.name,
+      emoji: card.emoji,
+      categoryId: card.categoryId,
+      amountMinor: card.amountMinor,
+      everyMonths: card.everyMonths,
+      runsForMonths: card.runsForMonths,
+      cutoff: card.cutoff === 2 ? 2 : 1,
+      startMonth: card.startMonth.slice(0, 7),
+      payOnDay: card.payOnDay,
+    });
+  }
 
   /**
    * Logging is the same action as anywhere else, carrying the entry's id so
@@ -76,7 +108,12 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
 
             return (
               <Card key={card.id} className={owed ? "border-gold-500/40" : undefined}>
-                <div className="flex items-start gap-3">
+                {/* The card opens it for correction; the buttons below opt out. */}
+                <button
+                  type="button"
+                  onClick={() => edit(card)}
+                  className="flex w-full items-start gap-3 text-left"
+                >
                   <span className="text-2xl">{card.emoji}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-sky-100">
@@ -85,9 +122,15 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
                     <p className="text-xs text-sky-300">
                       {scheduleLabel(card)} · {cutoffLabel(card.cutoff)}
                     </p>
+                    {card.payOnDay !== null && (
+                      <p className="text-xs text-sky-300">
+                        taken on the {card.payOnDay}
+                        {ordinal(card.payOnDay)}
+                      </p>
+                    )}
                   </div>
                   <Amount minor={card.amountMinor} size="sm" />
-                </div>
+                </button>
 
                 <div className="mt-4 flex items-center justify-between">
                   {owed ? (
@@ -119,13 +162,24 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
       </section>
 
       <NewRecurringSheet
-        open={adding}
-        onClose={() => setAdding(false)}
+        open={adding || editing !== null}
+        onClose={() => {
+          setAdding(false);
+          setEditing(null);
+        }}
         categories={categories}
         cutoff={cutoff}
         startMonth={startMonth}
-        onSubmit={(entry) => startTransition(() => createRecurring(entry))}
+        initial={editing}
+        onSubmit={submit}
       />
     </>
   );
+}
+
+/** "1st", "2nd", "3rd", "4th" and the rest, for a day of the month. */
+function ordinal(day: number) {
+  if (day > 3 && day < 21) return "th";
+  const last = day % 10;
+  return last === 1 ? "st" : last === 2 ? "nd" : last === 3 ? "rd" : "th";
 }

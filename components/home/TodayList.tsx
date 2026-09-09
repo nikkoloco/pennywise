@@ -5,24 +5,37 @@ import { Amount } from "@/components/ui/Amount";
 import { SectionLabel } from "@/components/ui/Card";
 import { formatTime } from "@/lib/time";
 
-type Props = { entries: Entry[]; onDelete: (id: string) => void };
+type Props = {
+  entries: Entry[];
+  onDelete: (id: string) => void;
+  onEdit: (entry: Entry) => void;
+};
 
-export function TodayList({ entries, onDelete }: Props) {
+export function TodayList({ entries, onDelete, onEdit }: Props) {
   return (
     <>
       <SectionLabel>Today</SectionLabel>
       <ul className="mt-3 divide-y divide-ink-700">
         {entries.map((entry) => (
           <li key={entry.id} className="flex items-center gap-3 py-3">
-            <span className="text-lg">{entry.categoryEmoji}</span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm text-sky-100">{entry.categoryName}</p>
-              <p className="truncate text-xs text-sky-300">
-                {entry.note ? `${entry.note} · ` : ""}
-                {formatTime(entry.spentAt)}
-              </p>
-            </div>
-            <Amount minor={entry.amountMinor} size="sm" tone="paper" />
+            {/* The row opens the entry for correction; the cross still deletes.
+                An entry not yet written has no id to edit, so it waits. */}
+            <button
+              type="button"
+              onClick={() => onEdit(entry)}
+              disabled={entry.id.startsWith("pending-")}
+              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+            >
+              <span className="text-lg">{entry.categoryEmoji}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-sky-100">{entry.categoryName}</p>
+                <p className="truncate text-xs text-sky-300">
+                  {entry.note ? `${entry.note} · ` : ""}
+                  {formatTime(entry.spentAt)}
+                </p>
+              </div>
+              <Amount minor={entry.amountMinor} size="sm" tone="paper" />
+            </button>
             <button
               type="button"
               onClick={() => onDelete(entry.id)}

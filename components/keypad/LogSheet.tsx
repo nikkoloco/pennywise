@@ -6,7 +6,7 @@ import { Keypad } from "@/components/keypad/Keypad";
 import { DraftAmount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
-import { draftToMinor } from "@/lib/money";
+import { draftToMinor, minorToDraft } from "@/lib/money";
 
 export type SubcategoryOption = { id: string; name: string };
 export type CategoryOption = {
@@ -18,12 +18,23 @@ export type CategoryOption = {
 };
 export type EventOption = { id: string; name: string; emoji: string };
 
+/** An expense being corrected rather than created. */
+export type ExpenseDraft = {
+  id: string;
+  amountMinor: number;
+  categoryId: string;
+  note: string;
+  eventId: string | null;
+};
+
 type Props = {
   open: boolean;
   onClose: () => void;
   categories: CategoryOption[];
   events: EventOption[];
   initialCategoryId: string | null;
+  /** Present when correcting an entry that is already logged. */
+  initial?: ExpenseDraft | null;
   onSubmit: (
     amountMinor: number,
     categoryId: string,
@@ -39,7 +50,8 @@ type Props = {
 export function LogSheet({ open, onClose, ...rest }: Props) {
   return (
     <Sheet open={open} onClose={onClose}>
-      <LogForm {...rest} onClose={onClose} />
+      {/* Keyed so opening a different entry starts from that entry's values. */}
+      <LogForm key={rest.initial?.id ?? rest.initialCategoryId ?? "new"} {...rest} onClose={onClose} />
     </Sheet>
   );
 }
@@ -48,17 +60,24 @@ function LogForm({
   categories,
   events,
   initialCategoryId,
+  initial,
   onSubmit,
   onClose,
 }: Omit<Props, "open"> & { onClose: () => void }) {
   const [, startTransition] = useTransition();
-  const [draft, setDraft] = useState("");
-  const [groupId, setGroupId] = useState(initialCategoryId);
-  const [childId, setChildId] = useState<string | null>(null);
+  const [draft, setDraft] = useState(initial ? minorToDraft(initial.amountMinor) : "");
+  // An entry filed under a subgroup opens with that subgroup already chosen.
+  const parentOf = (id: string) =>
+    categories.find((c) => c.id === id || c.children.some((k) => k.id === id)) ?? null;
+  const opened = initial ? parentOf(initial.categoryId) : null;
+  const [groupId, setGroupId] = useState(opened?.id ?? initialCategoryId);
+  const [childId, setChildId] = useState<string | null>(
+    initial && opened && opened.id !== initial.categoryId ? initial.categoryId : null,
+  );
   const [addingChild, setAddingChild] = useState(false);
   const [childName, setChildName] = useState("");
-  const [note, setNote] = useState("");
-  const [eventId, setEventId] = useState<string | null>(null);
+  const [note, setNote] = useState(initial?.note ?? "");
+  const [eventId, setEventId] = useState<string | null>(initial?.eventId ?? null);
 
   const group = categories.find((c) => c.id === groupId) ?? null;
   // The subgroup is the more precise answer, so it wins when one is chosen.
@@ -207,7 +226,7 @@ function LogForm({
         }}
         className={ready ? "" : "pointer-events-none opacity-40"}
       >
-        Log it
+        {initial ? "Save" : "Log it"}
       </Button>
     </div>
   );

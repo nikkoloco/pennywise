@@ -8,14 +8,26 @@ import {
   deleteExpense,
   deleteUpcoming,
   logExpense,
+  updateExpense,
+  updateQuickTap,
+  updateUpcoming,
 } from "@/app/actions";
-import { NewTileSheet } from "@/components/home/NewTileSheet";
-import { UpcomingSheet } from "@/components/home/UpcomingSheet";
+import {
+  NewTileSheet,
+  type TileDraft,
+  type TileInput,
+} from "@/components/home/NewTileSheet";
+import {
+  UpcomingSheet,
+  type UpcomingInput,
+  type UpcomingItem,
+} from "@/components/home/UpcomingSheet";
 import { TodayList } from "@/components/home/TodayList";
 import {
   LogSheet,
   type CategoryOption,
   type EventOption,
+  type ExpenseDraft,
 } from "@/components/keypad/LogSheet";
 import { Amount } from "@/components/ui/Amount";
 import { Card, SectionLabel } from "@/components/ui/Card";
@@ -30,6 +42,9 @@ export type Entry = {
   amountMinor: number;
   note: string | null;
   spentAt: Date;
+  /** Carried so an entry can be reopened for correction. */
+  categoryId: string;
+  eventId: string | null;
   categoryName: string;
   categoryEmoji: string;
 };
@@ -40,14 +55,6 @@ type Tile = {
   emoji: string;
   amountMinor: number | null;
   categoryId: string;
-};
-
-/** A rough future cost. No date, and never part of a total. */
-export type UpcomingItem = {
-  id: string;
-  name: string;
-  emoji: string;
-  approxMinor: number;
 };
 
 export type Banner = {
@@ -91,8 +98,13 @@ export function HomeClient({
 }: Props) {
   const [, startTransition] = useTransition();
   const [keypadFor, setKeypadFor] = useState<string | null>(null);
+  const [editingEntry, setEditingEntry] = useState<ExpenseDraft | null>(null);
   const [addingTile, setAddingTile] = useState(false);
+  const [editingTile, setEditingTile] = useState<TileDraft | null>(null);
+  /** A tile logs on tap, so correcting one needs a mode rather than a gesture. */
+  const [arrangingTiles, setArrangingTiles] = useState(false);
   const [addingUpcoming, setAddingUpcoming] = useState(false);
+  const [editingUpcoming, setEditingUpcoming] = useState<UpcomingItem | null>(null);
 
   const [entries, applyOptimistic] = useOptimistic(
     today,
@@ -133,6 +145,8 @@ export function HomeClient({
           amountMinor,
           note: note || null,
           spentAt: new Date(),
+          categoryId,
+          eventId,
           categoryName: category.name,
           categoryEmoji: category.emoji,
         },
@@ -162,8 +176,35 @@ export function HomeClient({
   }
 
   function tapped(tile: Tile) {
+    if (arrangingTiles) return setEditingTile({ ...tile });
     if (tile.amountMinor === null) return setKeypadFor(tile.categoryId);
     log(tile.amountMinor, tile.categoryId, "");
+  }
+
+  function submitEntry(
+    amountMinor: number,
+    categoryId: string,
+    note: string,
+    eventId: string | null,
+  ) {
+    if (!editingEntry) return log(amountMinor, categoryId, note, eventId);
+    const id = editingEntry.id;
+    setEditingEntry(null);
+    startTransition(() => updateExpense({ id, categoryId, amountMinor, note, eventId }));
+  }
+
+  function submitTile(tile: TileInput) {
+    const target = editingTile;
+    startTransition(() =>
+      target ? updateQuickTap({ ...tile, id: target.id }) : createQuickTap(tile),
+    );
+  }
+
+  function submitUpcoming(item: UpcomingInput) {
+    const target = editingUpcoming;
+    startTransition(() =>
+      target ? updateUpcoming({ ...item, id: target.id }) : createUpcoming(item),
+    );
   }
 
   return (
@@ -242,11 +283,18 @@ export function HomeClient({
               key={item.id}
               className="flex shrink-0 items-center gap-1.5 rounded-full bg-umber-700 py-2 pr-2 pl-3 text-sm text-gold-300"
             >
-              <span>{item.emoji}</span>
-              {item.name}
-              <span className="text-xs text-umber-300">
-                ~{formatMinor(item.approxMinor)}
-              </span>
+              {/* The chip opens it for correction; the cross still removes it. */}
+              <button
+                type="button"
+                onClick={() => setEditingUpcoming(item)}
+                className="flex items-center gap-1.5"
+              >
+                <span>{item.emoji}</span>
+                {item.name}
+                <span className="text-xs text-umber-300">
+                  ~{formatMinor(item.approxMinor)} · {item.cutoff === 1 ? "1st" : "2nd"}
+                </span>
+              </button>
               <button
                 type="button"
                 onClick={() => startTransition(() => deleteUpcoming(item.id))}
@@ -280,6 +328,13 @@ export function HomeClient({
           ))}
           <TapTile emoji="+" label="New" onPress={() => setAddingTile(true)} addTile />
         </div>
+        <button
+          type="button"
+          onClick={() => setArrangingTiles(!arrangingTiles)}
+          className="mt-3 min-h-11 text-xs font-semibold text-sky-300"
+        >
+          {arrangingTiles ? "Done editing" : "Edit tiles"}
+        </button>
       </section>
 
       <section className="px-6">
@@ -291,30 +346,54 @@ export function HomeClient({
             </p>
           </Card>
         ) : (
-          <TodayList entries={entries} onDelete={remove} />
+          <TodayList
+            entries={entries}
+            onDelete={remove}
+            onEdit={(entry) =>
+              setEditingEntry({
+                id: entry.id,
+                amountMinor: entry.amountMinor,
+                categoryId: entry.categoryId,
+                note: entry.note ?? "",
+                eventId: entry.eventId,
+              })
+            }
+          />
         )}
       </section>
 
       <LogSheet
-        open={keypadFor !== null}
-        onClose={() => setKeypadFor(null)}
+        open={keypadFor !== null || editingEntry !== null}
+        onClose={() => {
+          setKeypadFor(null);
+          setEditingEntry(null);
+        }}
         categories={categories}
         events={events}
         initialCategoryId={keypadFor}
-        onSubmit={log}
+        initial={editingEntry}
+        onSubmit={submitEntry}
       />
 
       <UpcomingSheet
-        open={addingUpcoming}
-        onClose={() => setAddingUpcoming(false)}
-        onSubmit={(item) => startTransition(() => createUpcoming(item))}
+        open={addingUpcoming || editingUpcoming !== null}
+        onClose={() => {
+          setAddingUpcoming(false);
+          setEditingUpcoming(null);
+        }}
+        initial={editingUpcoming}
+        onSubmit={submitUpcoming}
       />
 
       <NewTileSheet
-        open={addingTile}
-        onClose={() => setAddingTile(false)}
+        open={addingTile || editingTile !== null}
+        onClose={() => {
+          setAddingTile(false);
+          setEditingTile(null);
+        }}
         categories={categories}
-        onSubmit={(tile) => startTransition(() => createQuickTap(tile))}
+        initial={editingTile}
+        onSubmit={submitTile}
       />
     </>
   );

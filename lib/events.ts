@@ -64,6 +64,7 @@ type EventRow = {
   eventMonth: string;
   budgetMinor: number;
   isRecurringAnnual: boolean;
+  cutoff: number;
 };
 
 type SpendRow = { eventId: string | null; amountMinor: number; spentAt: Date };
@@ -101,6 +102,7 @@ export function buildEventCards(
         budgetMinor: event.budgetMinor,
         spentMinor,
         isRecurringAnnual: event.isRecurringAnnual,
+        cutoff: event.cutoff,
       };
     })
     .sort((a, b) => a.monthsAway - b.monthsAway);

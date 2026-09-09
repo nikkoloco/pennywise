@@ -57,6 +57,13 @@
       "when": 1788938180380,
       "tag": "0007_add_recurring",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788940635922,
+      "tag": "0008_add_cutoffs_and_payday",
+      "breakpoints": true
     }
   ]
 }

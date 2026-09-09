@@ -68,7 +68,7 @@ export default async function Home() {
         payLabel={payPeriodLabel(pay)}
         planned={planned}
         banner={banner}
-        upcoming={upcoming}
+        upcoming={upcoming.map((u) => ({ ...u, cutoff: u.cutoff === 2 ? 2 : 1 }) as const)}
       />
     </main>
   );

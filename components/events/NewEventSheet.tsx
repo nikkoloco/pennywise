@@ -4,62 +4,72 @@ import { useState } from "react";
 import { Keypad } from "@/components/keypad/Keypad";
 import { DraftAmount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
+import { CutoffToggle } from "@/components/ui/CutoffToggle";
+import { DEFAULT_EMOJI, EmojiPicker } from "@/components/ui/EmojiPicker";
 import { Sheet } from "@/components/ui/Sheet";
-import { draftToMinor } from "@/lib/money";
+import { draftToMinor, minorToDraft } from "@/lib/money";
 
-type NewEvent = {
+export type PlanInput = {
   name: string;
   emoji: string;
-  /** "YYYY-MM". A plan is due in a month, never on a particular day. */
+  /** "YYYY-MM". Anticipated spending is due in a month, never on a day. */
   eventMonth: string;
   budgetMinor: number;
   isRecurringAnnual: boolean;
+  cutoff: 1 | 2;
 };
+
+export type PlanDraft = PlanInput & { id: string };
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  onSubmit: (event: NewEvent) => void;
+  /** Present when correcting one that already exists. */
+  initial?: PlanDraft | null;
+  onSubmit: (event: PlanInput) => void;
 };
 
-export function NewEventSheet({ open, onClose, onSubmit }: Props) {
+export function NewEventSheet({ open, onClose, initial, onSubmit }: Props) {
   return (
-    <Sheet open={open} onClose={onClose} title="New plan">
-      <NewEventForm onSubmit={onSubmit} onClose={onClose} />
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title={initial ? "Edit" : "Anticipated expenditure"}
+    >
+      {/* Keyed so switching between entries starts from that entry's values. */}
+      <PlanForm
+        key={initial?.id ?? "new"}
+        initial={initial}
+        onSubmit={onSubmit}
+        onClose={onClose}
+      />
     </Sheet>
   );
 }
 
-function NewEventForm({ onSubmit, onClose }: Omit<Props, "open">) {
-  const [name, setName] = useState("");
-  const [emoji, setEmoji] = useState("");
-  const [eventMonth, setEventMonth] = useState("");
-  const [draft, setDraft] = useState("");
-  const [recurring, setRecurring] = useState(false);
+function PlanForm({ initial, onSubmit, onClose }: Omit<Props, "open">) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [emoji, setEmoji] = useState(initial?.emoji ?? DEFAULT_EMOJI);
+  const [eventMonth, setEventMonth] = useState(initial?.eventMonth ?? "");
+  const [draft, setDraft] = useState(initial ? minorToDraft(initial.budgetMinor) : "");
+  const [recurring, setRecurring] = useState(initial?.isRecurringAnnual ?? false);
+  const [cutoff, setCutoff] = useState<1 | 2>(initial?.cutoff ?? 1);
 
   const budget = draftToMinor(draft);
-  const ready = name.trim() && emoji.trim() && eventMonth && budget > 0;
+  const ready = name.trim() && eventMonth && budget > 0;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
-        <input
-          value={emoji}
-          onChange={(e) => setEmoji(e.target.value)}
-          placeholder="🎂"
-          maxLength={8}
-          aria-label="Emoji"
-          className="min-h-11 w-16 rounded-2xl bg-umber-700 text-center text-xl focus:outline-none"
-        />
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Japan trip"
-          maxLength={40}
-          aria-label="Name"
-          className="min-h-11 flex-1 rounded-2xl bg-umber-700 px-4 text-sm text-gold-300 placeholder:text-umber-300 focus:outline-none"
-        />
-      </div>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Japan trip"
+        maxLength={40}
+        aria-label="Name"
+        className="min-h-11 rounded-2xl bg-umber-700 px-4 text-sm text-gold-300 placeholder:text-umber-300 focus:outline-none"
+      />
+
+      <EmojiPicker value={emoji} onChange={setEmoji} tone="umber" />
 
       <div>
         <p className="mb-2 text-xs tracking-[0.15em] text-umber-300 uppercase">
@@ -73,6 +83,8 @@ function NewEventForm({ onSubmit, onClose }: Omit<Props, "open">) {
           className="min-h-11 w-full rounded-2xl bg-umber-700 px-4 text-sm text-gold-300 focus:outline-none"
         />
       </div>
+
+      <CutoffToggle value={cutoff} onChange={setCutoff} label="Pay it from" tone="umber" />
 
       <button
         type="button"
@@ -100,7 +112,7 @@ function NewEventForm({ onSubmit, onClose }: Omit<Props, "open">) {
 
       <div>
         <p className="mb-2 text-xs tracking-[0.15em] text-umber-300 uppercase">
-          Planned budget
+          Anticipated budget
         </p>
         <div className="mb-3 text-center">
           <DraftAmount draft={draft} size="lg" tone={budget > 0 ? "gold" : "muted"} />
@@ -112,16 +124,17 @@ function NewEventForm({ onSubmit, onClose }: Omit<Props, "open">) {
         onClick={() => {
           onSubmit({
             name: name.trim(),
-            emoji: emoji.trim(),
+            emoji,
             eventMonth,
             budgetMinor: budget,
             isRecurringAnnual: recurring,
+            cutoff,
           });
           onClose();
         }}
         className={ready ? "" : "pointer-events-none opacity-40"}
       >
-        Add plan
+        {initial ? "Save" : "Add it"}
       </Button>
     </div>
   );

@@ -4,7 +4,7 @@ import { Skeleton, SkeletonGrid } from "@/components/ui/Skeleton";
 export default function Loading() {
   return (
     <main className="flex flex-1 flex-col gap-4 pb-6">
-      <PageHeader title="Planned" subtitle="Things to budget for" />
+      <PageHeader title="Future" subtitle="Anticipated expenditure" />
 
       <section className="px-6">
         <Skeleton className="h-12 rounded-full" />

@@ -21,6 +21,8 @@ export type RecurringRow = {
   runsForMonths: number | null;
   cutoff: number;
   startMonth: string;
+  /** The day of the month it is taken, when that is fixed. */
+  payOnDay: number | null;
 };
 
 /** Whether the payment lands in this month at all, frequency and run considered. */

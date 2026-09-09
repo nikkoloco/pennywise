@@ -52,6 +52,9 @@ export async function getExpensesIn(userId: string, range: Range) {
       note: expenses.note,
       spentAt: expenses.spentAt,
       source: expenses.source,
+      /** Carried so an entry can be opened for correction, not just displayed. */
+      categoryId: expenses.categoryId,
+      eventId: expenses.eventId,
       categoryName: categories.name,
       categoryEmoji: categories.emoji,
       categoryColor: categories.color,
@@ -146,6 +149,7 @@ export async function getUpcoming(userId: string) {
       name: upcoming.name,
       emoji: upcoming.emoji,
       approxMinor: upcoming.approxMinor,
+      cutoff: upcoming.cutoff,
     })
     .from(upcoming)
     .where(eq(upcoming.userId, userId))
@@ -164,6 +168,7 @@ export async function getRecurring(userId: string) {
       runsForMonths: recurring.runsForMonths,
       cutoff: recurring.cutoff,
       startMonth: recurring.startMonth,
+      payOnDay: recurring.payOnDay,
     })
     .from(recurring)
     .where(and(eq(recurring.userId, userId), eq(recurring.isArchived, false)))

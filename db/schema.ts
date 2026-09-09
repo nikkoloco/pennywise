@@ -77,6 +77,8 @@ export const events = pgTable(
     color: text("color").notNull(),
     /** The month the plan is due, always stored as the first of that month. */
     eventMonth: date("event_month").notNull(),
+    /** Which pay period inside that month it comes out of: 1 or 2. */
+    cutoff: integer("cutoff").notNull().default(1),
     /** Planned target, not money set aside. Spend is compared against it. */
     budgetMinor: integer("budget_minor").notNull(),
     notes: text("notes"),
@@ -121,6 +123,8 @@ export const recurring = pgTable(
     cutoff: integer("cutoff").notNull(),
     /** Where the schedule counts from, always the first of that month. */
     startMonth: date("start_month").notNull(),
+    /** The day of the month it is taken, when that is fixed. Null when it varies. */
+    payOnDay: integer("pay_on_day"),
     isArchived: boolean("is_archived").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -198,6 +202,8 @@ export const upcoming = pgTable(
     emoji: text("emoji").notNull(),
     /** A guess, never summed into a total. */
     approxMinor: integer("approx_minor").notNull(),
+    /** Which half of the month's pay should absorb it. No month: these have no date. */
+    cutoff: integer("cutoff").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("upcoming_user_created_idx").on(t.userId, t.createdAt)],

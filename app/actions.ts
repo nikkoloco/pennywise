@@ -151,6 +151,7 @@ const eventSchema = z.object({
   eventMonth: z.string().regex(/^\d{4}-\d{2}$/),
   budgetMinor: z.number().int().positive(),
   isRecurringAnnual: z.boolean(),
+  cutoff: z.union([z.literal(1), z.literal(2)]),
 });
 
 export async function createEvent(input: z.infer<typeof eventSchema>) {
@@ -233,6 +234,7 @@ const upcomingSchema = z.object({
   name: z.string().trim().min(1).max(40),
   emoji: z.string().trim().min(1).max(8),
   approxMinor: z.number().int().positive(),
+  cutoff: z.union([z.literal(1), z.literal(2)]),
 });
 
 /**
@@ -305,6 +307,8 @@ const recurringSchema = z.object({
   runsForMonths: z.number().int().min(1).max(600).nullable(),
   cutoff: z.union([z.literal(1), z.literal(2)]),
   startMonth: z.string().regex(/^\d{4}-\d{2}$/),
+  /** The day it is taken when that is fixed, null when it varies. */
+  payOnDay: z.number().int().min(1).max(31).nullable(),
 });
 
 export async function createRecurring(input: z.infer<typeof recurringSchema>) {
@@ -339,4 +343,125 @@ export async function deleteApiToken(id: string) {
     .delete(apiTokens)
     .where(and(eq(apiTokens.id, z.uuid().parse(id)), eq(apiTokens.userId, userId)));
   revalidatePath("/settings/shortcuts");
+}
+
+/**
+ * Editing, entity by entity.
+ *
+ * Every one of these is the create schema with an id attached, so a form can
+ * submit the same shape whether it is making something or correcting it. Each
+ * scopes its where clause by user, so an id from elsewhere matches nothing.
+ */
+const withId = <T extends z.ZodRawShape>(shape: z.ZodObject<T>) =>
+  shape.extend({ id: z.uuid() });
+
+export async function updateExpense(input: z.infer<ReturnType<typeof withId<typeof logSchema.shape>>>) {
+  const { id, categoryId, amountMinor, note, eventId } = withId(logSchema).parse(input);
+  const userId = await currentUserId();
+
+  await db
+    .update(expenses)
+    .set({
+      categoryId,
+      amountMinor,
+      note: note || null,
+      eventId: eventId ?? null,
+    })
+    .where(and(eq(expenses.id, id), eq(expenses.userId, userId)));
+
+  revalidatePath("/");
+  revalidatePath("/calendar");
+  revalidatePath("/insights");
+}
+
+export async function updateEvent(input: z.infer<ReturnType<typeof withId<typeof eventSchema.shape>>>) {
+  const { id, ...data } = withId(eventSchema).parse(input);
+  const userId = await currentUserId();
+
+  await db
+    .update(events)
+    .set({ ...data, eventMonth: firstOfMonth(data.eventMonth) })
+    .where(and(eq(events.id, id), eq(events.userId, userId)));
+
+  revalidatePath("/events");
+  revalidatePath("/");
+  revalidatePath("/calendar");
+}
+
+export async function updateUpcoming(input: z.infer<ReturnType<typeof withId<typeof upcomingSchema.shape>>>) {
+  const { id, ...data } = withId(upcomingSchema).parse(input);
+  const userId = await currentUserId();
+
+  await db
+    .update(upcoming)
+    .set(data)
+    .where(and(eq(upcoming.id, id), eq(upcoming.userId, userId)));
+
+  revalidatePath("/");
+  revalidatePath("/calendar");
+}
+
+export async function updateRecurring(input: z.infer<ReturnType<typeof withId<typeof recurringSchema.shape>>>) {
+  const { id, ...data } = withId(recurringSchema).parse(input);
+  const userId = await currentUserId();
+
+  await db
+    .update(recurring)
+    .set({ ...data, startMonth: firstOfMonth(data.startMonth) })
+    .where(and(eq(recurring.id, id), eq(recurring.userId, userId)));
+
+  revalidatePath("/recurring");
+  revalidatePath("/calendar");
+}
+
+export async function updateQuickTap(input: z.infer<ReturnType<typeof withId<typeof tileSchema.shape>>>) {
+  const { id, label, emoji, categoryId, amountMinor } = withId(tileSchema).parse(input);
+  const userId = await currentUserId();
+
+  await db
+    .update(quickTaps)
+    .set({ label, emoji, amountMinor, ...(categoryId ? { categoryId } : {}) })
+    .where(and(eq(quickTaps.id, id), eq(quickTaps.userId, userId)));
+
+  revalidatePath("/");
+}
+
+const categoryEditSchema = z.object({
+  id: z.uuid(),
+  name: z.string().trim().min(1).max(30),
+  emoji: z.string().trim().min(1).max(8),
+  color: z.string().trim().min(1).max(20),
+});
+
+/**
+ * Renaming a category rewrites history: every expense already filed under it
+ * reads the new name, which is the point. Subgroups keep their own name but
+ * follow the parent's colour, so the swatch is pushed down to them here.
+ */
+export async function updateCategory(input: z.infer<typeof categoryEditSchema>) {
+  const { id, name, emoji, color } = categoryEditSchema.parse(input);
+  const userId = await currentUserId();
+
+  await db
+    .update(categories)
+    .set({ name, emoji, color })
+    .where(and(eq(categories.id, id), eq(categories.userId, userId)));
+
+  await db
+    .update(categories)
+    .set({ color })
+    .where(and(eq(categories.parentId, id), eq(categories.userId, userId)));
+
+  revalidatePath("/");
+  revalidatePath("/insights");
+  revalidatePath("/settings");
+}
+
+export async function deleteCategory(id: string) {
+  const userId = await currentUserId();
+  await db
+    .delete(categories)
+    .where(and(eq(categories.id, z.uuid().parse(id)), eq(categories.userId, userId)));
+  revalidatePath("/");
+  revalidatePath("/settings");
 }

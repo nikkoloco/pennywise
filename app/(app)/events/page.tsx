@@ -18,7 +18,7 @@ export default async function EventsPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-4 pb-6">
-      <PageHeader title="Planned" subtitle="Things to budget for" />
+      <PageHeader title="Future" subtitle="Anticipated expenditure" />
       <EventsClient events={cards} />
     </main>
   );

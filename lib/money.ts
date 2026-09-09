@@ -74,3 +74,15 @@ export function splitDraft(draft: string) {
     suffix: cents === undefined ? "" : `.${cents}`,
   };
 }
+
+/**
+ * The draft a stored amount would have been typed as, so editing starts from
+ * what you entered rather than from an empty keypad. Whole pesos come back
+ * without a decimal part, matching how they were typed in the first place.
+ */
+export function minorToDraft(minor: number) {
+  if (minor === 0) return "";
+  const whole = Math.floor(minor / 100);
+  const cents = minor % 100;
+  return cents === 0 ? String(whole) : `${whole}.${String(cents).padStart(2, "0")}`;
+}
