@@ -127,6 +127,30 @@ export const quickTaps = pgTable(
   (t) => [index("quick_taps_user_sort_idx").on(t.userId, t.sortOrder)],
 );
 
+/**
+ * Rough things coming up, with a guess at what they might cost.
+ *
+ * Deliberately not an event: a plan has a month and a budget firm enough to
+ * count towards a total, while these are a note with a number attached. They
+ * never reach any total, which is exactly why they are allowed to be wrong,
+ * and they carry no date because the point is to remember the thing at all.
+ */
+export const upcoming = pgTable(
+  "upcoming",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    emoji: text("emoji").notNull(),
+    /** A guess, never summed into a total. */
+    approxMinor: integer("approx_minor").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("upcoming_user_created_idx").on(t.userId, t.createdAt)],
+);
+
 /** Bearer tokens for Apple Shortcuts. Stored hashed; shown once at creation. */
 export const apiTokens = pgTable(
   "api_tokens",
@@ -168,6 +192,7 @@ export type Event = typeof events.$inferSelect;
 export type QuickTap = typeof quickTaps.$inferSelect;
 export type ApiToken = typeof apiTokens.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;
+export type Upcoming = typeof upcoming.$inferSelect;
 
 /**
  * A short diagnostic trail for the Shortcuts endpoint. A Shortcut that fails

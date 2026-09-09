@@ -36,6 +36,13 @@
       "when": 1788932500135,
       "tag": "0004_marvelous_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788935836907,
+      "tag": "0005_add_upcoming",
+      "breakpoints": true
     }
   ]
 }

@@ -5,7 +5,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { SWATCH_COUNT } from "@/db/defaults";
-import { apiTokens, categories, events, expenses, quickTaps } from "@/db/schema";
+import {
+  apiTokens,
+  categories,
+  events,
+  expenses,
+  quickTaps,
+  upcoming,
+} from "@/db/schema";
 import { EVENT_COLORS, firstOfMonth } from "@/lib/events";
 import { generateToken, hashToken } from "@/lib/tokens";
 import { currentUserId } from "@/lib/user";
@@ -214,4 +221,30 @@ export async function exportData(format: "csv" | "json") {
     header.join(","),
     ...shaped.map((r) => header.map((k) => csvCell(r[k as keyof typeof r])).join(",")),
   ].join("\n");
+}
+
+const upcomingSchema = z.object({
+  name: z.string().trim().min(1).max(40),
+  emoji: z.string().trim().min(1).max(8),
+  approxMinor: z.number().int().positive(),
+});
+
+/**
+ * A rough thing coming up. The amount is a guess and is never added to a
+ * total, so nothing downstream has to trust it.
+ */
+export async function createUpcoming(input: z.infer<typeof upcomingSchema>) {
+  const data = upcomingSchema.parse(input);
+  const userId = await currentUserId();
+
+  await db.insert(upcoming).values({ ...data, userId });
+  revalidatePath("/");
+}
+
+export async function deleteUpcoming(id: string) {
+  const userId = await currentUserId();
+  await db
+    .delete(upcoming)
+    .where(and(eq(upcoming.id, z.uuid().parse(id)), eq(upcoming.userId, userId)));
+  revalidatePath("/");
 }

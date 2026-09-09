@@ -7,6 +7,7 @@ import {
   events,
   expenses,
   quickTaps,
+  upcoming,
 } from "./schema";
 
 type Range = { start: Date; end: Date };
@@ -121,4 +122,18 @@ export async function getApiAttempts(userId: string, limit = 8) {
     .where(or(eq(apiAttempts.userId, userId), isNull(apiAttempts.userId)))
     .orderBy(desc(apiAttempts.at))
     .limit(limit);
+}
+
+/** Rough upcoming costs, in the order they were thought of. */
+export async function getUpcoming(userId: string) {
+  return db
+    .select({
+      id: upcoming.id,
+      name: upcoming.name,
+      emoji: upcoming.emoji,
+      approxMinor: upcoming.approxMinor,
+    })
+    .from(upcoming)
+    .where(eq(upcoming.userId, userId))
+    .orderBy(asc(upcoming.createdAt));
 }
