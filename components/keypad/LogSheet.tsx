@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Keypad } from "@/components/keypad/Keypad";
-import { Amount } from "@/components/ui/Amount";
+import { DraftAmount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
+import { draftToMinor } from "@/lib/money";
 
 export type CategoryOption = { id: string; name: string; emoji: string };
 export type EventOption = { id: string; name: string; emoji: string };
@@ -42,17 +43,18 @@ function LogForm({
   onSubmit,
   onClose,
 }: Omit<Props, "open"> & { onClose: () => void }) {
-  const [amount, setAmount] = useState(0);
+  const [draft, setDraft] = useState("");
   const [categoryId, setCategoryId] = useState(initialCategoryId);
   const [note, setNote] = useState("");
   const [eventId, setEventId] = useState<string | null>(null);
 
+  const amount = draftToMinor(draft);
   const ready = amount > 0 && categoryId !== null;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="text-center">
-        <Amount minor={amount} size="hero" tone={amount > 0 ? "gold" : "muted"} />
+        <DraftAmount draft={draft} size="hero" tone={amount > 0 ? "gold" : "muted"} />
       </div>
 
       <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
@@ -119,7 +121,7 @@ function LogForm({
         </div>
       )}
 
-      <Keypad value={amount} onChange={setAmount} />
+      <Keypad draft={draft} onChange={setDraft} />
 
       <Button
         onClick={() => {

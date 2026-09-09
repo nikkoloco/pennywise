@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { Keypad } from "@/components/keypad/Keypad";
 import type { CategoryOption } from "@/components/keypad/LogSheet";
-import { Amount } from "@/components/ui/Amount";
+import { DraftAmount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
+import { draftToMinor } from "@/lib/money";
 
 type NewTile = {
   label: string;
@@ -38,8 +39,9 @@ function NewTileForm({
   const [label, setLabel] = useState("");
   const [emoji, setEmoji] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [amount, setAmount] = useState(0);
+  const [draft, setDraft] = useState("");
 
+  const amount = draftToMinor(draft);
   const ready = label.trim().length > 0 && emoji.trim().length > 0;
 
   return (
@@ -103,9 +105,9 @@ function NewTileForm({
           Leave at zero and the tile opens the keypad. Set one and a single tap logs it.
         </p>
         <div className="mb-3 text-center">
-          <Amount minor={amount} size="lg" tone={amount > 0 ? "gold" : "muted"} />
+          <DraftAmount draft={draft} size="lg" tone={amount > 0 ? "gold" : "muted"} />
         </div>
-        <Keypad value={amount} onChange={setAmount} />
+        <Keypad draft={draft} onChange={setDraft} />
       </div>
 
       <Button

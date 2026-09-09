@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Keypad } from "@/components/keypad/Keypad";
-import { Amount } from "@/components/ui/Amount";
+import { DraftAmount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
+import { draftToMinor } from "@/lib/money";
 
 type NewEvent = {
   name: string;
@@ -33,9 +34,10 @@ function NewEventForm({ onSubmit, onClose }: Omit<Props, "open">) {
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("");
   const [eventMonth, setEventMonth] = useState("");
-  const [budget, setBudget] = useState(0);
+  const [draft, setDraft] = useState("");
   const [recurring, setRecurring] = useState(false);
 
+  const budget = draftToMinor(draft);
   const ready = name.trim() && emoji.trim() && eventMonth && budget > 0;
 
   return (
@@ -101,9 +103,9 @@ function NewEventForm({ onSubmit, onClose }: Omit<Props, "open">) {
           Planned budget
         </p>
         <div className="mb-3 text-center">
-          <Amount minor={budget} size="lg" tone={budget > 0 ? "gold" : "muted"} />
+          <DraftAmount draft={draft} size="lg" tone={budget > 0 ? "gold" : "muted"} />
         </div>
-        <Keypad value={budget} onChange={setBudget} />
+        <Keypad draft={draft} onChange={setDraft} />
       </div>
 
       <Button

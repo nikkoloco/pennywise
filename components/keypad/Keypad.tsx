@@ -1,35 +1,29 @@
 "use client";
 
 import { motion } from "motion/react";
+import { pressAmountKey } from "@/lib/money";
 
-const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "del"];
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "del"];
 
-/** Nine digits of centavos is far more than anyone logs in one go. */
-const MAX = 99_999_999;
-
-type Props = { value: number; onChange: (next: number) => void };
+type Props = { draft: string; onChange: (next: string) => void };
 
 /**
- * Amounts fill from the right in centavos, so 1-2-5 reads as 1.25 and no
- * decimal key is ever needed.
+ * Amounts are typed in whole pesos, the way they are said out loud, and the
+ * decimal key is there for the rare amount that needs it. The draft string is
+ * the value rather than a number, because "250" and "250." differ only in what
+ * comes next.
  */
-export function Keypad({ value, onChange }: Props) {
-  function press(key: string) {
-    if (key === "del") return onChange(Math.floor(value / 10));
-    const next = key === "00" ? value * 100 : value * 10 + Number(key);
-    if (next <= MAX) onChange(next);
-  }
-
+export function Keypad({ draft, onChange }: Props) {
   return (
     <div className="grid grid-cols-3 gap-2">
       {KEYS.map((key) => (
         <motion.button
           key={key}
           type="button"
-          onClick={() => press(key)}
+          onClick={() => onChange(pressAmountKey(draft, key))}
           whileTap={{ scale: 0.93, backgroundColor: "#17275e" }}
           transition={{ type: "spring", stiffness: 600, damping: 30 }}
-          aria-label={key === "del" ? "Delete" : key}
+          aria-label={key === "del" ? "Delete" : key === "." ? "Decimal point" : key}
           className="flex min-h-14 items-center justify-center rounded-2xl bg-void/60 text-2xl font-semibold text-paper"
         >
           {key === "del" ? <BackspaceIcon /> : key}
