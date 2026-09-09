@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
-import { createQuickTap, deleteExpense, logExpense } from "@/app/actions";
+import {
+  createQuickTap,
+  createUpcoming,
+  deleteExpense,
+  deleteUpcoming,
+  logExpense,
+} from "@/app/actions";
 import { NewTileSheet } from "@/components/home/NewTileSheet";
+import { UpcomingSheet } from "@/components/home/UpcomingSheet";
 import { TodayList } from "@/components/home/TodayList";
 import {
   LogSheet,
@@ -35,6 +42,14 @@ type Tile = {
   categoryId: string;
 };
 
+/** A rough future cost. No date, and never part of a total. */
+export type UpcomingItem = {
+  id: string;
+  name: string;
+  emoji: string;
+  approxMinor: number;
+};
+
 export type Banner = {
   emoji: string;
   name: string;
@@ -49,9 +64,13 @@ type Props = {
   events: EventOption[];
   today: Entry[];
   monthTotal: number;
+  /** Spend since the last payday, and the two dates that bound it. */
+  payTotal: number;
+  payLabel: string;
   /** What this month's plans still expect to cost, on top of what is spent. */
   planned: number;
   banner: Banner | null;
+  upcoming: UpcomingItem[];
 };
 
 type Optimistic =
@@ -64,12 +83,16 @@ export function HomeClient({
   events,
   today,
   monthTotal,
+  payTotal,
+  payLabel,
   planned,
   banner,
+  upcoming,
 }: Props) {
   const [, startTransition] = useTransition();
   const [keypadFor, setKeypadFor] = useState<string | null>(null);
   const [addingTile, setAddingTile] = useState(false);
+  const [addingUpcoming, setAddingUpcoming] = useState(false);
 
   const [entries, applyOptimistic] = useOptimistic(
     today,
@@ -80,7 +103,10 @@ export function HomeClient({
   );
 
   const dayTotal = entries.reduce((n, e) => n + e.amountMinor, 0);
-  const monthWithPending = monthTotal - today.reduce((n, e) => n + e.amountMinor, 0) + dayTotal;
+  // Today sits inside both windows, so an optimistic entry has to move both.
+  const settledToday = today.reduce((n, e) => n + e.amountMinor, 0);
+  const monthWithPending = monthTotal - settledToday + dayTotal;
+  const payWithPending = payTotal - settledToday + dayTotal;
 
   function log(
     amountMinor: number,
@@ -150,6 +176,16 @@ export function HomeClient({
         </div>
 
         <div className="relative mt-5 flex items-baseline justify-between">
+          <div>
+            <SectionLabel>This cutoff</SectionLabel>
+            <p className="mt-0.5 text-[11px] text-sky-400">{payLabel}</p>
+          </div>
+          <span className="text-sm font-bold text-sky-100">
+            {formatMinor(payWithPending)}
+          </span>
+        </div>
+
+        <div className="relative mt-3 flex items-baseline justify-between">
           <SectionLabel>This month</SectionLabel>
           <span className="text-sm font-bold text-sky-100">
             {formatMinor(monthWithPending + planned)}
@@ -187,7 +223,42 @@ export function HomeClient({
       )}
 
       <section className="px-6">
-        <div className="grid grid-cols-3 gap-3">
+        {/* Umber throughout: these are future money, and a guess at that, so
+            they must never read as something already spent. */}
+        <SectionLabel>Coming up</SectionLabel>
+        <div className="-mx-6 mt-2 flex gap-2 overflow-x-auto px-6 pb-1">
+          {upcoming.map((item) => (
+            <span
+              key={item.id}
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-umber-700 py-2 pr-2 pl-3 text-sm text-gold-300"
+            >
+              <span>{item.emoji}</span>
+              {item.name}
+              <span className="text-xs text-umber-300">
+                ~{formatMinor(item.approxMinor)}
+              </span>
+              <button
+                type="button"
+                onClick={() => startTransition(() => deleteUpcoming(item.id))}
+                aria-label={`Remove ${item.name}`}
+                className="flex size-5 items-center justify-center rounded-full text-umber-300"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={() => setAddingUpcoming(true)}
+            className="shrink-0 rounded-full border border-dashed border-umber-500 px-3 py-2 text-sm text-umber-300"
+          >
+            + Add
+          </button>
+        </div>
+      </section>
+
+      <section className="px-6">
+        <div className="grid grid-cols-4 gap-2">
           {tiles.map((tile) => (
             <TapTile
               key={tile.id}
@@ -221,6 +292,12 @@ export function HomeClient({
         events={events}
         initialCategoryId={keypadFor}
         onSubmit={log}
+      />
+
+      <UpcomingSheet
+        open={addingUpcoming}
+        onClose={() => setAddingUpcoming(false)}
+        onSubmit={(item) => startTransition(() => createUpcoming(item))}
       />
 
       <NewTileSheet

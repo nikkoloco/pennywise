@@ -7,8 +7,10 @@ import {
   getExpensesIn,
   getQuickTaps,
   getTotalIn,
+  getUpcoming,
 } from "@/db/queries";
 import { buildEventCards, plannedRemaining } from "@/lib/events";
+import { payPeriodLabel, payPeriodRange } from "@/lib/payPeriod";
 import { dayRange, formatLongDate, monthKey, monthRange, now } from "@/lib/time";
 import { currentUserId } from "@/lib/user";
 
@@ -18,15 +20,18 @@ export default async function Home() {
   const userId = await currentUserId();
   const day = dayRange();
   const month = monthRange();
+  const pay = payPeriodRange();
 
-  const [tiles, categories, today, monthTotal, events, eventSpend] =
+  const [tiles, categories, today, monthTotal, payTotal, events, eventSpend, upcoming] =
     await Promise.all([
       getQuickTaps(userId),
       getCategories(userId),
       getExpensesIn(userId, day),
       getTotalIn(userId, month),
+      getTotalIn(userId, pay),
       getEvents(userId),
       getEventSpend(userId),
+      getUpcoming(userId),
     ]);
 
   // Only a plan close enough to change today's decisions earns space on Home:
@@ -46,8 +51,11 @@ export default async function Home() {
         events={cards.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
         today={today}
         monthTotal={monthTotal}
+        payTotal={payTotal}
+        payLabel={payPeriodLabel(pay)}
         planned={planned}
         banner={banner}
+        upcoming={upcoming}
       />
     </main>
   );

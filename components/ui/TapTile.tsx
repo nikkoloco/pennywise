@@ -16,6 +16,10 @@ type Props = {
 /**
  * The core control of the app. Sized so a thumb can hit it without looking,
  * and it flashes on press so a tap is confirmed without reading anything.
+ *
+ * Four to a row leaves a tile too narrow for a hint line, so an amount-less
+ * tile simply shows no amount. The absence is the signal, and it is legible at
+ * a glance in a way a caption at this width would not be.
  */
 export function TapTile({
   emoji,
@@ -30,20 +34,20 @@ export function TapTile({
       onClick={onPress}
       whileTap={{ scale: 0.94, backgroundColor: "#17275e" }}
       transition={{ type: "spring", stiffness: 500, damping: 28 }}
-      className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-card p-2 ${
+      className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-card p-1.5 ${
         addTile
           ? "border border-dashed border-ink-500 text-sky-300"
           : "border border-ink-500 bg-ink-700"
       }`}
     >
-      <span className={addTile ? "text-2xl leading-none font-light" : "text-2xl leading-none"}>
+      <span className={addTile ? "text-xl leading-none font-light" : "text-xl leading-none"}>
         {emoji}
       </span>
-      <span className="text-xs font-medium text-sky-200">{label}</span>
-      {addTile ? null : amountMinor === null ? (
-        <span className="text-[10px] text-sky-400">tap to enter</span>
-      ) : (
-        <span className="text-[11px] font-bold text-gold-500">
+      <span className="line-clamp-2 text-center text-[10px] leading-tight font-medium text-sky-200">
+        {label}
+      </span>
+      {addTile || amountMinor === null ? null : (
+        <span className="text-[10px] leading-none font-bold text-gold-500">
           {formatMinor(amountMinor)}
         </span>
       )}

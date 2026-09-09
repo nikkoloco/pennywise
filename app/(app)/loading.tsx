@@ -18,8 +18,8 @@ export default function Loading() {
       </section>
 
       <section className="px-6">
-        <div className="grid grid-cols-3 gap-3">
-          <SkeletonGrid count={9} className="aspect-square" />
+        <div className="grid grid-cols-4 gap-2">
+          <SkeletonGrid count={12} className="aspect-square" />
         </div>
       </section>
     </main>
