@@ -105,7 +105,27 @@ export function buildEventCards(
         cutoff: event.cutoff,
       };
     })
-    .sort((a, b) => a.monthsAway - b.monthsAway);
+    .sort(sortByWhenDue);
+}
+
+/**
+ * Soonest first, so what has to be paid next is what you see.
+ *
+ * Anything already past drops below everything still to come, most recent
+ * first: an overdue plan is worth keeping visible, but never above the one due
+ * this month. Two plans in the same month are separated by their cutoff.
+ */
+function sortByWhenDue(
+  a: { monthsAway: number; cutoff: number },
+  b: { monthsAway: number; cutoff: number },
+) {
+  const aPast = a.monthsAway < 0;
+  const bPast = b.monthsAway < 0;
+  if (aPast !== bPast) return aPast ? 1 : -1;
+  if (a.monthsAway !== b.monthsAway) {
+    return aPast ? b.monthsAway - a.monthsAway : a.monthsAway - b.monthsAway;
+  }
+  return a.cutoff - b.cutoff;
 }
 
 /**

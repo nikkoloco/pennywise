@@ -47,10 +47,10 @@ export default async function Home() {
         .map((child) => ({ id: child.id, name: child.name })),
     }));
 
-  // Only a plan close enough to change today's decisions earns space on Home:
-  // one due this month or next, never one still a season away.
+  // Everything still to come earns a place on Home, soonest first. They sit in
+  // a row you swipe rather than a list, so a dozen plans cost one card of space.
   const cards = buildEventCards(events, eventSpend, monthKey(), monthKey);
-  const banner = cards.find((c) => c.monthsAway >= 0 && c.monthsAway <= 1) ?? null;
+  const plans = cards.filter((c) => c.monthsAway >= 0);
 
   // Money due this month is money this month costs, whether or not it has left yet.
   const planned = plannedRemaining(cards);
@@ -67,7 +67,16 @@ export default async function Home() {
         payTotal={payTotal}
         payLabel={payPeriodLabel(pay)}
         planned={planned}
-        banner={banner}
+        plans={plans.map((c) => ({
+          id: c.id,
+          emoji: c.emoji,
+          name: c.name,
+          monthsAway: c.monthsAway,
+          cutoff: c.cutoff,
+          occursOn: c.occursOn,
+          budgetMinor: c.budgetMinor,
+          spentMinor: c.spentMinor,
+        }))}
         upcoming={upcoming.map((u) => ({ ...u, cutoff: u.cutoff === 2 ? 2 : 1 }) as const)}
       />
     </main>

@@ -34,6 +34,8 @@ import { Card, SectionLabel } from "@/components/ui/Card";
 import { TapTile } from "@/components/ui/TapTile";
 import { Outbox } from "@/components/pwa/Outbox";
 import { countdownLabel } from "@/lib/events";
+import { cutoffLabel } from "@/lib/payPeriod";
+import { monthLabel } from "@/lib/time";
 import { formatMinor } from "@/lib/money";
 import { queueExpense } from "@/lib/outbox";
 
@@ -57,10 +59,14 @@ type Tile = {
   categoryId: string;
 };
 
-export type Banner = {
+export type Plan = {
+  id: string;
   emoji: string;
   name: string;
   monthsAway: number;
+  cutoff: number;
+  /** The month it falls in, as "YYYY-MM". */
+  occursOn: string;
   budgetMinor: number;
   spentMinor: number;
 };
@@ -76,7 +82,7 @@ type Props = {
   payLabel: string;
   /** What this month's plans still expect to cost, on top of what is spent. */
   planned: number;
-  banner: Banner | null;
+  plans: Plan[];
   upcoming: UpcomingItem[];
 };
 
@@ -93,7 +99,7 @@ export function HomeClient({
   payTotal,
   payLabel,
   planned,
-  banner,
+  plans,
   upcoming,
 }: Props) {
   const [, startTransition] = useTransition();
@@ -253,23 +259,36 @@ export function HomeClient({
 
       <Outbox />
 
-      {banner && (
-        <section className="px-6">
-          <Link href="/events" className="block">
-            <Card variant="event" className="flex items-center gap-3">
-              <span className="text-2xl">{banner.emoji}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-gold-300">
-                  {banner.name}
-                </p>
-                <p className="text-xs text-umber-300">
-                  {countdownLabel(banner.monthsAway)} ·{" "}
-                  {formatMinor(banner.spentMinor)} of{" "}
-                  {formatMinor(banner.budgetMinor)}
-                </p>
-              </div>
-            </Card>
-          </Link>
+      {plans.length > 0 && (
+        <section>
+          {/* One card wide, snapping as you swipe, so a dozen plans take no more
+              room than one and none of them is hidden behind a "nearest" rule. */}
+          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-6 pb-1">
+            {plans.map((plan) => (
+              <Link
+                key={plan.id}
+                href="/events"
+                className="w-[85%] shrink-0 snap-start"
+              >
+                <Card variant="event" className="flex items-center gap-3">
+                  <span className="text-2xl">{plan.emoji}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-gold-300">
+                      {plan.name}
+                    </p>
+                    <p className="text-xs text-umber-300">
+                      {monthLabel(plan.occursOn)} · {cutoffLabel(plan.cutoff)}
+                    </p>
+                    <p className="text-xs text-umber-300">
+                      {countdownLabel(plan.monthsAway)} ·{" "}
+                      {formatMinor(plan.spentMinor)} of{" "}
+                      {formatMinor(plan.budgetMinor)}
+                    </p>
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
         </section>
       )}
 
