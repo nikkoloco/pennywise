@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, gte, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "./index";
 import {
   apiAttempts,
@@ -7,11 +8,13 @@ import {
   events,
   expenses,
   quickTaps,
+  recurring,
   upcoming,
 } from "./schema";
 
 type Range = { start: Date; end: Date };
 
+/** Every category, parents and subgroups alike. Callers decide how to nest. */
 export async function getCategories(userId: string) {
   return db
     .select()
@@ -34,7 +37,14 @@ export async function getQuickTaps(userId: string) {
     .orderBy(asc(quickTaps.sortOrder));
 }
 
+/**
+ * Expenses carry both the exact category and the group it rolls up to. Lists
+ * want the specific one ("Groceries"), charts want the group ("Food"), and
+ * resolving it here means neither has to know the hierarchy exists.
+ */
 export async function getExpensesIn(userId: string, range: Range) {
+  const parent = alias(categories, "parent_category");
+
   return db
     .select({
       id: expenses.id,
@@ -45,9 +55,13 @@ export async function getExpensesIn(userId: string, range: Range) {
       categoryName: categories.name,
       categoryEmoji: categories.emoji,
       categoryColor: categories.color,
+      groupName: sql<string>`coalesce(${parent.name}, ${categories.name})`,
+      groupEmoji: sql<string>`coalesce(${parent.emoji}, ${categories.emoji})`,
+      groupColor: sql<string>`coalesce(${parent.color}, ${categories.color})`,
     })
     .from(expenses)
     .innerJoin(categories, eq(expenses.categoryId, categories.id))
+    .leftJoin(parent, eq(categories.parentId, parent.id))
     .where(
       and(
         eq(expenses.userId, userId),
@@ -136,4 +150,42 @@ export async function getUpcoming(userId: string) {
     .from(upcoming)
     .where(eq(upcoming.userId, userId))
     .orderBy(asc(upcoming.createdAt));
+}
+
+export async function getRecurring(userId: string) {
+  return db
+    .select({
+      id: recurring.id,
+      name: recurring.name,
+      emoji: recurring.emoji,
+      categoryId: recurring.categoryId,
+      amountMinor: recurring.amountMinor,
+      everyMonths: recurring.everyMonths,
+      runsForMonths: recurring.runsForMonths,
+      cutoff: recurring.cutoff,
+      startMonth: recurring.startMonth,
+    })
+    .from(recurring)
+    .where(and(eq(recurring.userId, userId), eq(recurring.isArchived, false)))
+    .orderBy(asc(recurring.createdAt));
+}
+
+/**
+ * Which recurring payments were actually settled inside a window. Being due is
+ * derived from the schedule; being paid can only come from a logged expense.
+ */
+export async function getRecurringPaid(userId: string, range: Range) {
+  const rows = await db
+    .selectDistinct({ recurringId: expenses.recurringId })
+    .from(expenses)
+    .where(
+      and(
+        eq(expenses.userId, userId),
+        isNotNull(expenses.recurringId),
+        gte(expenses.spentAt, range.start),
+        lte(expenses.spentAt, range.end),
+      ),
+    );
+
+  return new Set(rows.map((r) => r.recurringId as string));
 }

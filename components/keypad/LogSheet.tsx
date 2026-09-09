@@ -1,13 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { createSubcategory } from "@/app/actions";
 import { Keypad } from "@/components/keypad/Keypad";
 import { DraftAmount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
 import { draftToMinor } from "@/lib/money";
 
-export type CategoryOption = { id: string; name: string; emoji: string };
+export type SubcategoryOption = { id: string; name: string };
+export type CategoryOption = {
+  id: string;
+  name: string;
+  emoji: string;
+  /** Subgroups, e.g. Groceries and Canteen under Food. Often empty. */
+  children: SubcategoryOption[];
+};
 export type EventOption = { id: string; name: string; emoji: string };
 
 type Props = {
@@ -43,13 +51,36 @@ function LogForm({
   onSubmit,
   onClose,
 }: Omit<Props, "open"> & { onClose: () => void }) {
+  const [, startTransition] = useTransition();
   const [draft, setDraft] = useState("");
-  const [categoryId, setCategoryId] = useState(initialCategoryId);
+  const [groupId, setGroupId] = useState(initialCategoryId);
+  const [childId, setChildId] = useState<string | null>(null);
+  const [addingChild, setAddingChild] = useState(false);
+  const [childName, setChildName] = useState("");
   const [note, setNote] = useState("");
   const [eventId, setEventId] = useState<string | null>(null);
 
+  const group = categories.find((c) => c.id === groupId) ?? null;
+  // The subgroup is the more precise answer, so it wins when one is chosen.
+  const categoryId = childId ?? groupId;
   const amount = draftToMinor(draft);
   const ready = amount > 0 && categoryId !== null;
+
+  function pickGroup(id: string) {
+    setGroupId(id);
+    setChildId(null);
+    setAddingChild(false);
+  }
+
+  function addChild() {
+    const name = childName.trim();
+    if (!name || !groupId) return;
+    startTransition(async () => {
+      setChildId(await createSubcategory({ parentId: groupId, name }));
+    });
+    setChildName("");
+    setAddingChild(false);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -62,9 +93,9 @@ function LogForm({
           <button
             key={c.id}
             type="button"
-            onClick={() => setCategoryId(c.id)}
+            onClick={() => pickGroup(c.id)}
             className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm ${
-              c.id === categoryId
+              c.id === groupId
                 ? "bg-sky-400 font-semibold text-ink-900"
                 : "bg-ink-700 text-sky-200"
             }`}
@@ -74,6 +105,52 @@ function LogForm({
           </button>
         ))}
       </div>
+
+      {group && (
+        <div>
+          <p className="mb-2 text-xs tracking-[0.15em] text-sky-300 uppercase">
+            {group.name} is
+          </p>
+          <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
+            {group.children.map((child) => (
+              <button
+                key={child.id}
+                type="button"
+                onClick={() => setChildId(child.id === childId ? null : child.id)}
+                className={`shrink-0 rounded-full px-3 py-2 text-sm ${
+                  child.id === childId
+                    ? "bg-sky-400 font-semibold text-ink-900"
+                    : "bg-ink-700 text-sky-200"
+                }`}
+              >
+                {child.name}
+              </button>
+            ))}
+
+            {addingChild ? (
+              <input
+                autoFocus
+                value={childName}
+                onChange={(e) => setChildName(e.target.value)}
+                onBlur={addChild}
+                onKeyDown={(e) => e.key === "Enter" && addChild()}
+                placeholder="New subgroup"
+                maxLength={30}
+                aria-label={`New subgroup of ${group.name}`}
+                className="min-h-11 w-36 shrink-0 rounded-full bg-ink-700 px-3 text-sm text-sky-100 placeholder:text-sky-400 focus:outline-none"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAddingChild(true)}
+                className="shrink-0 rounded-full border border-dashed border-ink-500 px-3 py-2 text-sm text-sky-300"
+              >
+                + New
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <input
         value={note}

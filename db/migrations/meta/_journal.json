@@ -43,6 +43,20 @@
       "when": 1788935836907,
       "tag": "0005_add_upcoming",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788937816773,
+      "tag": "0006_add_category_parent",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788938180380,
+      "tag": "0007_add_recurring",
+      "breakpoints": true
     }
   ]
 }

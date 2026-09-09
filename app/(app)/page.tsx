@@ -34,6 +34,19 @@ export default async function Home() {
       getUpcoming(userId),
     ]);
 
+  // Tiles and the keypad offer top-level categories; subgroups hang off them
+  // and are chosen only once a category has been picked.
+  const groups = categories
+    .filter((c) => c.parentId === null)
+    .map((parent) => ({
+      id: parent.id,
+      name: parent.name,
+      emoji: parent.emoji,
+      children: categories
+        .filter((c) => c.parentId === parent.id)
+        .map((child) => ({ id: child.id, name: child.name })),
+    }));
+
   // Only a plan close enough to change today's decisions earns space on Home:
   // one due this month or next, never one still a season away.
   const cards = buildEventCards(events, eventSpend, monthKey(), monthKey);
@@ -47,7 +60,7 @@ export default async function Home() {
       <PageHeader title="Today" subtitle={formatLongDate(now())} />
       <HomeClient
         tiles={tiles}
-        categories={categories.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
+        categories={groups}
         events={cards.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
         today={today}
         monthTotal={monthTotal}

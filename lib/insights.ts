@@ -10,6 +10,10 @@ export type InsightEntry = {
   categoryName: string;
   categoryEmoji: string;
   categoryColor: string;
+  /** The top-level group this rolls up to, which is what charts divide by. */
+  groupName: string;
+  groupEmoji: string;
+  groupColor: string;
 };
 
 const WEEKDAY_NAMES = [
@@ -28,17 +32,19 @@ export function byCategory(entries: InsightEntry[]) {
     { name: string; emoji: string; color: string; total: number; count: number }
   >();
 
+  // Grouped, not itemised: a donut split by subgroup would show several
+  // slices in one colour, since a subgroup inherits its parent's swatch.
   for (const e of entries) {
-    const row = map.get(e.categoryName) ?? {
-      name: e.categoryName,
-      emoji: e.categoryEmoji,
-      color: e.categoryColor,
+    const row = map.get(e.groupName) ?? {
+      name: e.groupName,
+      emoji: e.groupEmoji,
+      color: e.groupColor,
       total: 0,
       count: 0,
     };
     row.total += e.amountMinor;
     row.count += 1;
-    map.set(e.categoryName, row);
+    map.set(e.groupName, row);
   }
 
   return [...map.values()].sort((a, b) => b.total - a.total);

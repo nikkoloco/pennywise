@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   boolean,
   date,
   index,
@@ -50,6 +51,14 @@ export const categories = pgTable(
     emoji: text("emoji").notNull(),
     /** Swatch token name from the fixed palette ramp, e.g. "swatch-6". */
     color: text("color").notNull(),
+    /**
+     * Set when this is a subcategory, e.g. Groceries under Food. Exactly one
+     * level deep: a category with a parent never has children of its own, so
+     * rolling spend up is a single hop and charts never need recursion.
+     */
+    parentId: uuid("parent_id").references((): AnyPgColumn => categories.id, {
+      onDelete: "cascade",
+    }),
     sortOrder: integer("sort_order").notNull().default(0),
     isArchived: boolean("is_archived").notNull().default(false),
   },
@@ -79,6 +88,45 @@ export const events = pgTable(
   (t) => [index("events_user_month_idx").on(t.userId, t.eventMonth)],
 );
 
+/**
+ * A payment that comes back: a subscription, an instalment, an annual fee.
+ *
+ * Two numbers describe the schedule. `everyMonths` is how often it lands, and
+ * `runsForMonths` is how long that goes on for, counted in months from the
+ * start rather than in payments, so "every 3 months for a year" is four
+ * payments and reads the way it is said.
+ *
+ * Nothing here is ever logged automatically. A due payment is an invitation to
+ * tap, because the app's one rule is that it records money that actually left,
+ * and a cancelled subscription must not keep charging you in the totals.
+ */
+export const recurring = pgTable(
+  "recurring",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    emoji: text("emoji").notNull(),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "restrict" }),
+    amountMinor: integer("amount_minor").notNull(),
+    /** How often it lands, in months. 1 is monthly, 12 annual. */
+    everyMonths: integer("every_months").notNull().default(1),
+    /** Months from the start before it stops. Null runs forever. */
+    runsForMonths: integer("runs_for_months"),
+    /** Which pay period it comes out of: 1 ends on the 10th, 2 on the 25th. */
+    cutoff: integer("cutoff").notNull(),
+    /** Where the schedule counts from, always the first of that month. */
+    startMonth: date("start_month").notNull(),
+    isArchived: boolean("is_archived").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("recurring_user_idx").on(t.userId)],
+);
+
 export const expenses = pgTable(
   "expenses",
   {
@@ -91,6 +139,10 @@ export const expenses = pgTable(
       .references(() => categories.id, { onDelete: "restrict" }),
     /** Optional roll-up against a planned event, e.g. a trip. */
     eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+    /** Set when this expense settled a recurring payment for its cutoff. */
+    recurringId: uuid("recurring_id").references(() => recurring.id, {
+      onDelete: "set null",
+    }),
     amountMinor: integer("amount_minor").notNull(),
     note: text("note"),
     spentAt: timestamp("spent_at", { withTimezone: true }).notNull(),
@@ -193,6 +245,7 @@ export type QuickTap = typeof quickTaps.$inferSelect;
 export type ApiToken = typeof apiTokens.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;
 export type Upcoming = typeof upcoming.$inferSelect;
+export type Recurring = typeof recurring.$inferSelect;
 
 /**
  * A short diagnostic trail for the Shortcuts endpoint. A Shortcut that fails

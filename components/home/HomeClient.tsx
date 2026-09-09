@@ -108,13 +108,23 @@ export function HomeClient({
   const monthWithPending = monthTotal - settledToday + dayTotal;
   const payWithPending = payTotal - settledToday + dayTotal;
 
+  /** Covers subgroups too, since a logged category may be one level down. */
+  function categoryFor(id: string) {
+    for (const group of categories) {
+      if (group.id === id) return { name: group.name, emoji: group.emoji };
+      const child = group.children.find((c) => c.id === id);
+      if (child) return { name: child.name, emoji: group.emoji };
+    }
+    return { name: "", emoji: "" };
+  }
+
   function log(
     amountMinor: number,
     categoryId: string,
     note: string,
     eventId: string | null = null,
   ) {
-    const category = categories.find((c) => c.id === categoryId)!;
+    const category = categoryFor(categoryId);
     startTransition(async () => {
       applyOptimistic({
         kind: "add",

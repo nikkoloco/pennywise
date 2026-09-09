@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createApiToken, revokeApiToken } from "@/app/actions";
+import { createApiToken, deleteApiToken, revokeApiToken } from "@/app/actions";
 import { CopyField } from "@/components/settings/CopyField";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -82,6 +82,13 @@ export function TokenManager({ tokens }: { tokens: Token[] }) {
                   Revoke
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => startTransition(() => deleteApiToken(token.id))}
+                className="min-h-11 shrink-0 px-3 text-xs font-semibold text-umber-300"
+              >
+                Delete
+              </button>
             </li>
           ))}
         </ul>

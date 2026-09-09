@@ -11,9 +11,11 @@ import {
   events,
   expenses,
   quickTaps,
+  recurring,
   upcoming,
 } from "@/db/schema";
-import { EVENT_COLORS, firstOfMonth } from "@/lib/events";
+import { EVENT_COLORS } from "@/lib/events";
+import { firstOfMonth } from "@/lib/time";
 import { generateToken, hashToken } from "@/lib/tokens";
 import { currentUserId } from "@/lib/user";
 
@@ -23,23 +25,27 @@ const logSchema = z.object({
   note: z.string().trim().max(140).optional(),
   /** Optional roll-up against a planned event, e.g. a trip. */
   eventId: z.uuid().nullable().optional(),
+  /** Set when this settles a recurring payment for the current cutoff. */
+  recurringId: z.uuid().nullable().optional(),
 });
 
 export async function logExpense(input: z.infer<typeof logSchema>) {
-  const { categoryId, amountMinor, note, eventId } = logSchema.parse(input);
+  const { categoryId, amountMinor, note, eventId, recurringId } = logSchema.parse(input);
   const userId = await currentUserId();
 
   await db.insert(expenses).values({
-    userId: userId,
+    userId,
     categoryId,
     amountMinor,
     note: note || null,
     eventId: eventId ?? null,
+    recurringId: recurringId ?? null,
     spentAt: new Date(),
   });
 
   revalidatePath("/");
   revalidatePath("/events");
+  revalidatePath("/recurring");
 }
 
 export async function deleteExpense(id: string) {
@@ -70,7 +76,7 @@ export async function createQuickTap(input: z.infer<typeof tileSchema>) {
     .where(eq(quickTaps.userId, userId));
 
   await db.insert(quickTaps).values({
-    userId: userId,
+    userId,
     categoryId: resolvedCategoryId,
     label,
     emoji,
@@ -120,7 +126,7 @@ export async function createApiToken(name: string) {
   const token = generateToken();
 
   await db.insert(apiTokens).values({
-    userId: userId,
+    userId,
     name: label,
     tokenHash: hashToken(token),
   });
@@ -159,7 +165,7 @@ export async function createEvent(input: z.infer<typeof eventSchema>) {
   await db.insert(events).values({
     ...data,
     eventMonth: firstOfMonth(data.eventMonth),
-    userId: userId,
+    userId,
     color: EVENT_COLORS[count % EVENT_COLORS.length],
   });
 
@@ -247,4 +253,90 @@ export async function deleteUpcoming(id: string) {
     .delete(upcoming)
     .where(and(eq(upcoming.id, z.uuid().parse(id)), eq(upcoming.userId, userId)));
   revalidatePath("/");
+}
+
+const subcategorySchema = z.object({
+  parentId: z.uuid(),
+  name: z.string().trim().min(1).max(30),
+});
+
+/**
+ * Adds a subgroup to an existing category. It inherits the parent's emoji and
+ * colour, so a rolled-up chart still shows one colour per group and there is
+ * nothing to choose beyond the name.
+ */
+export async function createSubcategory(input: z.infer<typeof subcategorySchema>) {
+  const { parentId, name } = subcategorySchema.parse(input);
+  const userId = await currentUserId();
+
+  const [parent] = await db
+    .select({ emoji: categories.emoji, color: categories.color })
+    .from(categories)
+    .where(and(eq(categories.id, parentId), eq(categories.userId, userId)));
+
+  const [{ next }] = await db
+    .select({ next: sql<number>`coalesce(max(${categories.sortOrder}), 0) + 1` })
+    .from(categories)
+    .where(and(eq(categories.userId, userId), eq(categories.parentId, parentId)));
+
+  const [created] = await db
+    .insert(categories)
+    .values({
+      userId,
+      parentId,
+      name,
+      emoji: parent.emoji,
+      color: parent.color,
+      sortOrder: next,
+    })
+    .returning({ id: categories.id });
+
+  revalidatePath("/");
+  return created.id;
+}
+
+const recurringSchema = z.object({
+  name: z.string().trim().min(1).max(40),
+  emoji: z.string().trim().min(1).max(8),
+  categoryId: z.uuid(),
+  amountMinor: z.number().int().positive(),
+  everyMonths: z.number().int().min(1).max(60),
+  /** Null runs forever, which is what a subscription usually does. */
+  runsForMonths: z.number().int().min(1).max(600).nullable(),
+  cutoff: z.union([z.literal(1), z.literal(2)]),
+  startMonth: z.string().regex(/^\d{4}-\d{2}$/),
+});
+
+export async function createRecurring(input: z.infer<typeof recurringSchema>) {
+  const data = recurringSchema.parse(input);
+  const userId = await currentUserId();
+
+  await db.insert(recurring).values({
+    ...data,
+    startMonth: firstOfMonth(data.startMonth),
+    userId,
+  });
+
+  revalidatePath("/recurring");
+}
+
+export async function deleteRecurring(id: string) {
+  const userId = await currentUserId();
+  await db
+    .delete(recurring)
+    .where(and(eq(recurring.id, z.uuid().parse(id)), eq(recurring.userId, userId)));
+  revalidatePath("/recurring");
+}
+
+/**
+ * Removes a token outright, rather than leaving a revoked row behind. Revoking
+ * keeps the trail of something that once had access; deleting is for tokens
+ * you would rather forget existed, such as a botched first attempt.
+ */
+export async function deleteApiToken(id: string) {
+  const userId = await currentUserId();
+  await db
+    .delete(apiTokens)
+    .where(and(eq(apiTokens.id, z.uuid().parse(id)), eq(apiTokens.userId, userId)));
+  revalidatePath("/settings/shortcuts");
 }

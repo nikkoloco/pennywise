@@ -93,3 +93,25 @@ export function dayLabel(key: string) {
     timeZone: "UTC",
   });
 }
+
+/** "2026-03-01" from the database becomes the "2026-03" used everywhere here. */
+export function monthOf(stored: string) {
+  return stored.slice(0, 7);
+}
+
+/** The first of the month, which is how a month key is stored. */
+export function firstOfMonth(monthKey: string) {
+  return `${monthKey}-01`;
+}
+
+/** Zero-pads a month number so keys stay fixed width and sort as strings. */
+export function padMonth(month: number) {
+  return String(month).padStart(2, "0");
+}
+
+/** Whole months between two keys, negative once the month has passed. */
+export function monthsUntil(monthKey: string, todayKey: string) {
+  const [ay, am] = monthKey.split("-").map(Number);
+  const [by, bm] = todayKey.split("-").map(Number);
+  return (ay - by) * 12 + (am - bm);
+}

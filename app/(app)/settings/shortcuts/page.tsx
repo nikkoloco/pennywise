@@ -22,7 +22,14 @@ export default async function ShortcutsPage() {
     getApiAttempts(userId),
   ]);
 
-  const categoryList = categories.map((c) => c.name).join("\n");
+  // Parents each followed by their subgroups: a flat list the Shortcut can use,
+  // ordered so it still reads as the hierarchy it came from.
+  const categoryList = categories
+    .filter((c) => c.parentId === null)
+    .flatMap((parent) => [
+      parent.name,
+      ...categories.filter((c) => c.parentId === parent.id).map((c) => c.name),
+    ]).join("\n");
 
   return (
     <main className="flex flex-1 flex-col gap-6 pb-6">
@@ -79,7 +86,9 @@ export default async function ShortcutsPage() {
         <SectionLabel>Step 1 · Create your token</SectionLabel>
         <p className="mt-2 mb-3 text-sm text-sky-300">
           Shown once. Create it with your phone in front of you, and copy the
-          plain token — not the header version.
+          plain token — not the header version. Revoking keeps a record that a
+          token once existed; deleting removes it outright, which is what you
+          want for a botched first attempt.
         </p>
         <TokenManager tokens={tokens} />
       </section>
@@ -116,6 +125,12 @@ export default async function ShortcutsPage() {
               <div className="mt-2">
                 <CopyField multiline value={categoryList} />
               </div>
+              <span className="mt-2 block text-xs text-sky-400">
+                Subgroups are in the list too, each under what it belongs to.
+                Adding <Tap>Groceries</Tap> rather than <Tap>Food</Tap> records
+                the more precise answer, and both still roll up to Food in the
+                charts.
+              </span>
               <span className="mt-2 block text-xs text-sky-400">
                 Only add the ones you actually log by phone. A short list is
                 faster to tap on a lock screen.

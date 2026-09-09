@@ -4,30 +4,11 @@
  *
  * Month keys are "YYYY-MM". Fixed width means plain string comparison orders
  * them correctly, so none of this needs date arithmetic. The database column
- * stores the first of the month, and `monthOf` is the one place that bridges
- * the two forms.
+ * stores the first of the month, and `monthOf` in ./time is the one place that
+ * bridges the two forms.
  */
 
-/** "2026-03-01" from the database becomes the "2026-03" used everywhere here. */
-export function monthOf(stored: string) {
-  return stored.slice(0, 7);
-}
-
-/** The first of the month, which is how a month key is stored. */
-export function firstOfMonth(monthKey: string) {
-  return `${monthKey}-01`;
-}
-
-function pad(month: number) {
-  return String(month).padStart(2, "0");
-}
-
-/** Whole months between two keys, negative once the month has passed. */
-export function monthsUntil(monthKey: string, todayKey: string) {
-  const [ay, am] = monthKey.split("-").map(Number);
-  const [by, bm] = todayKey.split("-").map(Number);
-  return (ay - by) * 12 + (am - bm);
-}
+import { monthOf, monthsUntil, padMonth } from "./time";
 
 /**
  * Which month the plan next falls in. A one-off keeps its month forever, even
@@ -43,9 +24,9 @@ export function nextOccurrence(
 
   const month = Number(eventMonth.slice(5, 7));
   const thisYear = Number(todayKey.slice(0, 4));
-  const candidate = `${thisYear}-${pad(month)}`;
+  const candidate = `${thisYear}-${padMonth(month)}`;
 
-  return candidate >= todayKey ? candidate : `${thisYear + 1}-${pad(month)}`;
+  return candidate >= todayKey ? candidate : `${thisYear + 1}-${padMonth(month)}`;
 }
 
 /**

@@ -21,7 +21,7 @@ export function InsightsClient({ entries, period, offset, habits }: Props) {
 
   const slices = byCategory(entries);
   const total = entries.reduce((n, e) => n + e.amountMinor, 0);
-  const listed = selected ? entries.filter((e) => e.categoryName === selected) : entries;
+  const listed = selected ? entries.filter((e) => e.groupName === selected) : entries;
   // Bars follow the selection so donut, chart and list all describe the same slice.
   const bars = bucketTotals(listed, period, offset);
 
