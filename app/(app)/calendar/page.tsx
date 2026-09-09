@@ -1,6 +1,16 @@
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
+import { MonthObligations } from "@/components/calendar/MonthObligations";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getExpensesIn, getTotalIn } from "@/db/queries";
+import {
+  getEvents,
+  getEventSpend,
+  getExpensesIn,
+  getRecurring,
+  getTotalIn,
+  getUpcoming,
+} from "@/db/queries";
+import { buildEventCards } from "@/lib/events";
+import { monthObligations } from "@/lib/obligations";
 import {
   dayKey,
   monthKey,
@@ -20,14 +30,36 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   const partialThrough = key === monthKey() ? Number(todayKey.slice(8)) : undefined;
 
   const userId = await currentUserId();
-  const [entries, prevMonthTotal] = await Promise.all([
-    getExpensesIn(userId, monthRangeOf(key)),
-    getTotalIn(userId, previousMonthRange(key, partialThrough)),
-  ]);
+  const [entries, prevMonthTotal, recurring, events, eventSpend, upcoming] =
+    await Promise.all([
+      getExpensesIn(userId, monthRangeOf(key)),
+      getTotalIn(userId, previousMonthRange(key, partialThrough)),
+      getRecurring(userId),
+      getEvents(userId),
+      getEventSpend(userId),
+      getUpcoming(userId),
+    ]);
+
+  // What the month is committed to regardless of what has been spent in it.
+  // Only worth showing from this month on: for a month already gone, the
+  // spending below is the answer and a forecast would just argue with it.
+  const planned = buildEventCards(events, eventSpend, monthKey(), monthKey);
+  const owed = monthObligations(recurring, planned, key);
+  const guesses = upcoming.reduce((total, item) => total + item.approxMinor, 0);
 
   return (
     <main className="flex flex-1 flex-col gap-5 pb-6">
       <PageHeader title="Calendar" />
+
+      {key >= monthKey() && (
+        <MonthObligations
+          monthKey={key}
+          recurringMinor={owed.recurringMinor}
+          plannedMinor={owed.plannedMinor}
+          totalMinor={owed.totalMinor}
+          guessesMinor={guesses}
+        />
+      )}
       <CalendarGrid
         monthKey={key}
         todayKey={todayKey}
