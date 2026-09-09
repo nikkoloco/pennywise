@@ -8,7 +8,7 @@ import {
   getQuickTaps,
   getTotalIn,
 } from "@/db/queries";
-import { buildEventCards } from "@/lib/events";
+import { buildEventCards, plannedRemaining } from "@/lib/events";
 import { dayRange, formatLongDate, monthKey, monthRange, now } from "@/lib/time";
 import { currentUserId } from "@/lib/user";
 
@@ -34,6 +34,9 @@ export default async function Home() {
   const cards = buildEventCards(events, eventSpend, monthKey(), monthKey);
   const banner = cards.find((c) => c.monthsAway >= 0 && c.monthsAway <= 1) ?? null;
 
+  // Money due this month is money this month costs, whether or not it has left yet.
+  const planned = plannedRemaining(cards);
+
   return (
     <main className="flex flex-1 flex-col gap-6 pb-6">
       <PageHeader title="Today" subtitle={formatLongDate(now())} />
@@ -43,6 +46,7 @@ export default async function Home() {
         events={cards.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
         today={today}
         monthTotal={monthTotal}
+        planned={planned}
         banner={banner}
       />
     </main>

@@ -49,6 +49,8 @@ type Props = {
   events: EventOption[];
   today: Entry[];
   monthTotal: number;
+  /** What this month's plans still expect to cost, on top of what is spent. */
+  planned: number;
   banner: Banner | null;
 };
 
@@ -62,6 +64,7 @@ export function HomeClient({
   events,
   today,
   monthTotal,
+  planned,
   banner,
 }: Props) {
   const [, startTransition] = useTransition();
@@ -149,9 +152,16 @@ export function HomeClient({
         <div className="relative mt-5 flex items-baseline justify-between">
           <SectionLabel>This month</SectionLabel>
           <span className="text-sm font-bold text-sky-100">
-            {formatMinor(monthWithPending)}
+            {formatMinor(monthWithPending + planned)}
           </span>
         </div>
+        {planned > 0 && (
+          /* Umber marks the planned half, so one figure never hides the fact
+             that part of it has not actually left yet. */
+          <p className="relative mt-1 text-right text-xs text-umber-300">
+            {formatMinor(monthWithPending)} spent · {formatMinor(planned)} still planned
+          </p>
+        )}
       </section>
 
       <Outbox />

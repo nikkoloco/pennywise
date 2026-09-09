@@ -124,3 +124,19 @@ export function buildEventCards(
     })
     .sort((a, b) => a.monthsAway - b.monthsAway);
 }
+
+/**
+ * What this month's plans still expect to cost.
+ *
+ * Spend already logged against a plan is an expense like any other and is
+ * counted in the month's total already, so only the unspent remainder is
+ * added. A plan that has overrun contributes nothing rather than going
+ * negative: the overspend is real money and is already in the total.
+ */
+export function plannedRemaining(
+  cards: { monthsAway: number; budgetMinor: number; spentMinor: number }[],
+) {
+  return cards
+    .filter((card) => card.monthsAway === 0)
+    .reduce((total, card) => total + Math.max(0, card.budgetMinor - card.spentMinor), 0);
+}
