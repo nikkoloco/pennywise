@@ -6,9 +6,9 @@ import { z } from "zod";
 import { db } from "@/db";
 import { SWATCH_COUNT } from "@/db/defaults";
 import { apiTokens, categories, events, expenses, quickTaps } from "@/db/schema";
-import { EVENT_COLORS } from "@/lib/events";
+import { EVENT_COLORS, firstOfMonth } from "@/lib/events";
 import { generateToken, hashToken } from "@/lib/tokens";
-import { currentUser } from "@/lib/user";
+import { currentUserId } from "@/lib/user";
 
 const logSchema = z.object({
   categoryId: z.uuid(),
@@ -20,10 +20,10 @@ const logSchema = z.object({
 
 export async function logExpense(input: z.infer<typeof logSchema>) {
   const { categoryId, amountMinor, note, eventId } = logSchema.parse(input);
-  const user = await currentUser();
+  const userId = await currentUserId();
 
   await db.insert(expenses).values({
-    userId: user.id,
+    userId: userId,
     categoryId,
     amountMinor,
     note: note || null,
@@ -36,10 +36,10 @@ export async function logExpense(input: z.infer<typeof logSchema>) {
 }
 
 export async function deleteExpense(id: string) {
-  const user = await currentUser();
+  const userId = await currentUserId();
   await db
     .delete(expenses)
-    .where(and(eq(expenses.id, z.uuid().parse(id)), eq(expenses.userId, user.id)));
+    .where(and(eq(expenses.id, z.uuid().parse(id)), eq(expenses.userId, userId)));
   revalidatePath("/");
 }
 
@@ -53,17 +53,17 @@ const tileSchema = z.object({
 
 export async function createQuickTap(input: z.infer<typeof tileSchema>) {
   const { label, emoji, categoryId, amountMinor } = tileSchema.parse(input);
-  const user = await currentUser();
+  const userId = await currentUserId();
 
-  const resolvedCategoryId = categoryId ?? (await createCategory(user.id, label, emoji));
+  const resolvedCategoryId = categoryId ?? (await createCategory(userId, label, emoji));
 
   const [{ next }] = await db
     .select({ next: sql<number>`coalesce(max(${quickTaps.sortOrder}), -1) + 1` })
     .from(quickTaps)
-    .where(eq(quickTaps.userId, user.id));
+    .where(eq(quickTaps.userId, userId));
 
   await db.insert(quickTaps).values({
-    userId: user.id,
+    userId: userId,
     categoryId: resolvedCategoryId,
     label,
     emoji,
@@ -75,10 +75,10 @@ export async function createQuickTap(input: z.infer<typeof tileSchema>) {
 }
 
 export async function deleteQuickTap(id: string) {
-  const user = await currentUser();
+  const userId = await currentUserId();
   await db
     .delete(quickTaps)
-    .where(and(eq(quickTaps.id, z.uuid().parse(id)), eq(quickTaps.userId, user.id)));
+    .where(and(eq(quickTaps.id, z.uuid().parse(id)), eq(quickTaps.userId, userId)));
   revalidatePath("/");
 }
 
@@ -109,11 +109,11 @@ async function createCategory(userId: string, name: string, emoji: string) {
  */
 export async function createApiToken(name: string) {
   const label = z.string().trim().min(1).max(40).parse(name);
-  const user = await currentUser();
+  const userId = await currentUserId();
   const token = generateToken();
 
   await db.insert(apiTokens).values({
-    userId: user.id,
+    userId: userId,
     name: label,
     tokenHash: hashToken(token),
   });
@@ -123,34 +123,36 @@ export async function createApiToken(name: string) {
 }
 
 export async function revokeApiToken(id: string) {
-  const user = await currentUser();
+  const userId = await currentUserId();
   await db
     .update(apiTokens)
     .set({ revokedAt: new Date() })
-    .where(and(eq(apiTokens.id, z.uuid().parse(id)), eq(apiTokens.userId, user.id)));
+    .where(and(eq(apiTokens.id, z.uuid().parse(id)), eq(apiTokens.userId, userId)));
   revalidatePath("/settings/shortcuts");
 }
 
 const eventSchema = z.object({
   name: z.string().trim().min(1).max(40),
   emoji: z.string().trim().min(1).max(8),
-  eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** The month it has to be paid, as "YYYY-MM". Days are deliberately absent. */
+  eventMonth: z.string().regex(/^\d{4}-\d{2}$/),
   budgetMinor: z.number().int().positive(),
   isRecurringAnnual: z.boolean(),
 });
 
 export async function createEvent(input: z.infer<typeof eventSchema>) {
   const data = eventSchema.parse(input);
-  const user = await currentUser();
+  const userId = await currentUserId();
 
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(events)
-    .where(eq(events.userId, user.id));
+    .where(eq(events.userId, userId));
 
   await db.insert(events).values({
     ...data,
-    userId: user.id,
+    eventMonth: firstOfMonth(data.eventMonth),
+    userId: userId,
     color: EVENT_COLORS[count % EVENT_COLORS.length],
   });
 
@@ -159,10 +161,10 @@ export async function createEvent(input: z.infer<typeof eventSchema>) {
 }
 
 export async function deleteEvent(id: string) {
-  const user = await currentUser();
+  const userId = await currentUserId();
   await db
     .delete(events)
-    .where(and(eq(events.id, z.uuid().parse(id)), eq(events.userId, user.id)));
+    .where(and(eq(events.id, z.uuid().parse(id)), eq(events.userId, userId)));
   revalidatePath("/events");
   revalidatePath("/");
 }
@@ -178,7 +180,7 @@ function csvCell(value: string | number | null) {
  * saves it directly rather than exposing a public download URL.
  */
 export async function exportData(format: "csv" | "json") {
-  const user = await currentUser();
+  const userId = await currentUserId();
 
   const rows = await db
     .select({
@@ -192,7 +194,7 @@ export async function exportData(format: "csv" | "json") {
     .from(expenses)
     .innerJoin(categories, eq(expenses.categoryId, categories.id))
     .leftJoin(events, eq(expenses.eventId, events.id))
-    .where(eq(expenses.userId, user.id))
+    .where(eq(expenses.userId, userId))
     .orderBy(desc(expenses.spentAt));
 
   const shaped = rows.map((r) => ({

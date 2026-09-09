@@ -76,7 +76,7 @@ export async function getEvents(userId: string) {
     .select()
     .from(events)
     .where(and(eq(events.userId, userId), eq(events.isArchived, false)))
-    .orderBy(asc(events.eventDate));
+    .orderBy(asc(events.eventMonth));
 }
 
 export async function getApiTokens(userId: string) {

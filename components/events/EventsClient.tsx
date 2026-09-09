@@ -8,14 +8,16 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { countdownLabel } from "@/lib/events";
 import { formatMinor } from "@/lib/money";
+import { monthLabel } from "@/lib/time";
 
 export type EventCard = {
   id: string;
   name: string;
   emoji: string;
   color: string;
+  /** The month it falls in, as "YYYY-MM". */
   occursOn: string;
-  daysAway: number;
+  monthsAway: number;
   budgetMinor: number;
   spentMinor: number;
   isRecurringAnnual: boolean;
@@ -37,8 +39,8 @@ export function EventsClient({ events }: { events: EventCard[] }) {
         {events.length === 0 ? (
           <Card variant="event">
             <p className="text-sm text-gold-300">
-              Trips, birthdays and holidays go here. Give one a date and a budget,
-              then attach spending to it as it happens.
+              Trips, birthdays and holidays go here. Give one a month and a
+              budget, then attach spending to it as it happens.
             </p>
           </Card>
         ) : (
@@ -56,7 +58,7 @@ export function EventsClient({ events }: { events: EventCard[] }) {
                       {event.name}
                     </p>
                     <p className="text-xs text-umber-300">
-                      {countdownLabel(event.daysAway)}
+                      {monthLabel(event.occursOn)} · {countdownLabel(event.monthsAway)}
                       {event.isRecurringAnnual && " · every year"}
                     </p>
                   </div>

@@ -66,8 +66,8 @@ export const events = pgTable(
     name: text("name").notNull(),
     emoji: text("emoji").notNull(),
     color: text("color").notNull(),
-    /** Calendar day of the event in the user's timezone. */
-    eventDate: date("event_date").notNull(),
+    /** The month the plan is due, always stored as the first of that month. */
+    eventMonth: date("event_month").notNull(),
     /** Planned target, not money set aside. Spend is compared against it. */
     budgetMinor: integer("budget_minor").notNull(),
     notes: text("notes"),
@@ -76,7 +76,7 @@ export const events = pgTable(
     isArchived: boolean("is_archived").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("events_user_date_idx").on(t.userId, t.eventDate)],
+  (t) => [index("events_user_month_idx").on(t.userId, t.eventMonth)],
 );
 
 export const expenses = pgTable(

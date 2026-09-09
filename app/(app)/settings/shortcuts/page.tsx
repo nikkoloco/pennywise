@@ -6,7 +6,7 @@ import { Step, Tap } from "@/components/settings/Step";
 import { TokenManager } from "@/components/settings/TokenManager";
 import { Card, SectionLabel } from "@/components/ui/Card";
 import { getApiAttempts, getApiTokens, getCategories } from "@/db/queries";
-import { currentUser } from "@/lib/user";
+import { currentUserId } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +15,11 @@ export default async function ShortcutsPage() {
   const protocol = host.startsWith("localhost") ? "http" : "https";
   const endpoint = `${protocol}://${host}/api/v1/log`;
 
-  const user = await currentUser();
+  const userId = await currentUserId();
   const [tokens, categories, attempts] = await Promise.all([
-    getApiTokens(user.id),
-    getCategories(user.id),
-    getApiAttempts(user.id),
+    getApiTokens(userId),
+    getCategories(userId),
+    getApiAttempts(userId),
   ]);
 
   const categoryList = categories.map((c) => c.name).join("\n");

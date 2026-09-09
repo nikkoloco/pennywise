@@ -38,7 +38,7 @@ type Tile = {
 export type Banner = {
   emoji: string;
   name: string;
-  daysAway: number;
+  monthsAway: number;
   budgetMinor: number;
   spentMinor: number;
 };
@@ -166,7 +166,7 @@ export function HomeClient({
                   {banner.name}
                 </p>
                 <p className="text-xs text-umber-300">
-                  {countdownLabel(banner.daysAway)} ·{" "}
+                  {countdownLabel(banner.monthsAway)} ·{" "}
                   {formatMinor(banner.spentMinor)} of{" "}
                   {formatMinor(banner.budgetMinor)}
                 </p>

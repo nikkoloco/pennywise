@@ -9,7 +9,8 @@ import { Sheet } from "@/components/ui/Sheet";
 type NewEvent = {
   name: string;
   emoji: string;
-  eventDate: string;
+  /** "YYYY-MM". A plan is due in a month, never on a particular day. */
+  eventMonth: string;
   budgetMinor: number;
   isRecurringAnnual: boolean;
 };
@@ -31,11 +32,11 @@ export function NewEventSheet({ open, onClose, onSubmit }: Props) {
 function NewEventForm({ onSubmit, onClose }: Omit<Props, "open">) {
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("");
-  const [eventDate, setEventDate] = useState("");
+  const [eventMonth, setEventMonth] = useState("");
   const [budget, setBudget] = useState(0);
   const [recurring, setRecurring] = useState(false);
 
-  const ready = name.trim() && emoji.trim() && eventDate && budget > 0;
+  const ready = name.trim() && emoji.trim() && eventMonth && budget > 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -58,13 +59,18 @@ function NewEventForm({ onSubmit, onClose }: Omit<Props, "open">) {
         />
       </div>
 
-      <input
-        type="date"
-        value={eventDate}
-        onChange={(e) => setEventDate(e.target.value)}
-        aria-label="Date"
-        className="min-h-11 rounded-2xl bg-umber-700 px-4 text-sm text-gold-300 focus:outline-none"
-      />
+      <div>
+        <p className="mb-2 text-xs tracking-[0.15em] text-umber-300 uppercase">
+          Month to pay
+        </p>
+        <input
+          type="month"
+          value={eventMonth}
+          onChange={(e) => setEventMonth(e.target.value)}
+          aria-label="Month to pay"
+          className="min-h-11 w-full rounded-2xl bg-umber-700 px-4 text-sm text-gold-300 focus:outline-none"
+        />
+      </div>
 
       <button
         type="button"
@@ -74,7 +80,7 @@ function NewEventForm({ onSubmit, onClose }: Omit<Props, "open">) {
         <span className="text-sm text-gold-300">
           Every year
           <span className="mt-0.5 block text-xs text-umber-300">
-            Birthdays and holidays roll forward on their own
+            Comes back in the same month, year after year
           </span>
         </span>
         <span
@@ -105,7 +111,7 @@ function NewEventForm({ onSubmit, onClose }: Omit<Props, "open">) {
           onSubmit({
             name: name.trim(),
             emoji: emoji.trim(),
-            eventDate,
+            eventMonth,
             budgetMinor: budget,
             isRecurringAnnual: recurring,
           });

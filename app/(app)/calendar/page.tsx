@@ -7,7 +7,7 @@ import {
   monthRangeOf,
   previousMonthRange,
 } from "@/lib/time";
-import { currentUser } from "@/lib/user";
+import { currentUserId } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +19,10 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   const todayKey = dayKey(new Date());
   const partialThrough = key === monthKey() ? Number(todayKey.slice(8)) : undefined;
 
-  const user = await currentUser();
+  const userId = await currentUserId();
   const [entries, prevMonthTotal] = await Promise.all([
-    getExpensesIn(user.id, monthRangeOf(key)),
-    getTotalIn(user.id, previousMonthRange(key, partialThrough)),
+    getExpensesIn(userId, monthRangeOf(key)),
+    getTotalIn(userId, previousMonthRange(key, partialThrough)),
   ]);
 
   return (

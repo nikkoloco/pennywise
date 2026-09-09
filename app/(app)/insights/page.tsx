@@ -13,7 +13,7 @@ import {
   previousRange,
 } from "@/lib/period";
 import { dayKey, now } from "@/lib/time";
-import { currentUser } from "@/lib/user";
+import { currentUserId } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ export default async function InsightsPage({ searchParams }: PageProps<"/insight
   const offset = Number.isInteger(Number(o)) ? Number(o) : 0;
 
   const range = periodRange(period, offset);
-  const user = await currentUser();
+  const userId = await currentUserId();
 
   // Averages, streaks and comparisons only count days that have actually happened.
   const days = eachDayOfInterval({
@@ -32,9 +32,9 @@ export default async function InsightsPage({ searchParams }: PageProps<"/insight
   }).map((d) => format(d, "yyyy-MM-dd"));
 
   const [entries, previousTotal] = await Promise.all([
-    getExpensesIn(user.id, range),
+    getExpensesIn(userId, range),
     getTotalIn(
-      user.id,
+      userId,
       previousRange(period, offset, offset === 0 ? days.length : undefined),
     ),
   ]);

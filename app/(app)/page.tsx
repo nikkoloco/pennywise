@@ -9,29 +9,30 @@ import {
   getTotalIn,
 } from "@/db/queries";
 import { buildEventCards } from "@/lib/events";
-import { dayKey, dayRange, formatLongDate, monthRange, now } from "@/lib/time";
-import { currentUser } from "@/lib/user";
+import { dayRange, formatLongDate, monthKey, monthRange, now } from "@/lib/time";
+import { currentUserId } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const user = await currentUser();
+  const userId = await currentUserId();
   const day = dayRange();
   const month = monthRange();
 
   const [tiles, categories, today, monthTotal, events, eventSpend] =
     await Promise.all([
-      getQuickTaps(user.id),
-      getCategories(user.id),
-      getExpensesIn(user.id, day),
-      getTotalIn(user.id, month),
-      getEvents(user.id),
-      getEventSpend(user.id),
+      getQuickTaps(userId),
+      getCategories(userId),
+      getExpensesIn(userId, day),
+      getTotalIn(userId, month),
+      getEvents(userId),
+      getEventSpend(userId),
     ]);
 
-  // Only a plan close enough to change today's decisions earns space on Home.
-  const cards = buildEventCards(events, eventSpend, dayKey(new Date()), dayKey);
-  const banner = cards.find((c) => c.daysAway >= 0 && c.daysAway <= 14) ?? null;
+  // Only a plan close enough to change today's decisions earns space on Home:
+  // one due this month or next, never one still a season away.
+  const cards = buildEventCards(events, eventSpend, monthKey(), monthKey);
+  const banner = cards.find((c) => c.monthsAway >= 0 && c.monthsAway <= 1) ?? null;
 
   return (
     <main className="flex flex-1 flex-col gap-6 pb-6">
