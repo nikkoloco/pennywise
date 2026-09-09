@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { CategoryManager } from "@/components/settings/CategoryManager";
 import { ExportButtons } from "@/components/settings/ExportButtons";
 import { LockButton } from "@/components/settings/LockButton";
 import { Card, SectionLabel } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { getCategories } from "@/db/queries";
+import { currentUserId } from "@/lib/user";
 
 const SETTINGS = [
   ["Currency", "PHP (₱)"],
@@ -10,7 +13,12 @@ const SETTINGS = [
   ["Week starts", "Monday"],
 ];
 
-export default function SettingsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage() {
+  const userId = await currentUserId();
+  const categories = await getCategories(userId);
+
   return (
     <main className="flex flex-1 flex-col gap-5 pb-6">
       <PageHeader title="Settings" />
@@ -74,10 +82,20 @@ export default function SettingsPage() {
       </section>
 
       <section className="px-6">
-        <SectionLabel>Coming</SectionLabel>
-        <p className="mt-2 text-sm text-sky-300">
-          Category and quick-tap editors.
+        <SectionLabel>Categories</SectionLabel>
+        <p className="mt-2 mb-3 text-sm text-sky-300">
+          Rename one and everything already filed under it follows. Tap a
+          subgroup to edit it; tiles are edited on the Log screen.
         </p>
+        <CategoryManager
+          categories={categories.map((c) => ({
+            id: c.id,
+            name: c.name,
+            emoji: c.emoji,
+            color: c.color,
+            parentId: c.parentId,
+          }))}
+        />
       </section>
     </main>
   );
