@@ -47,10 +47,12 @@ export default async function Home() {
         .map((child) => ({ id: child.id, name: child.name })),
     }));
 
-  // Everything still to come earns a place on Home, soonest first. They sit in
-  // a row you swipe rather than a list, so a dozen plans cost one card of space.
+  // Only what is due this month, in cutoff order. Home is the screen you open
+  // to decide about today, and a plan three months out cannot inform that; it
+  // has a tab of its own. They still sit in a row you swipe, so several of them
+  // cost one card of space.
   const cards = buildEventCards(events, eventSpend, monthKey(), monthKey);
-  const plans = cards.filter((c) => c.monthsAway >= 0);
+  const plans = cards.filter((c) => c.monthsAway === 0);
 
   // Money due this month is money this month costs, whether or not it has left yet.
   const planned = plannedRemaining(cards);
