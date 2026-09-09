@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { CategoryDonut } from "@/components/insights/CategoryDonut";
+import { CutoffSplit } from "@/components/insights/CutoffSplit";
 import { PeriodBars } from "@/components/insights/PeriodBars";
 import { Amount } from "@/components/ui/Amount";
 import { Card, SectionLabel } from "@/components/ui/Card";
-import { byCategory, bucketTotals, type InsightEntry } from "@/lib/insights";
+import { byCategory, byCutoff, bucketTotals, type InsightEntry } from "@/lib/insights";
 import type { Period } from "@/lib/period";
 
 type Props = {
@@ -79,6 +80,10 @@ export function InsightsClient({ entries, period, offset, habits }: Props) {
         </SectionLabel>
         <PeriodBars data={bars} />
       </section>
+
+      {/* Follows the selection like the bars do, so donut, chart, split and
+          list all describe the same slice of spending. */}
+      <CutoffSplit rows={byCutoff(listed)} />
 
       {habits}
 

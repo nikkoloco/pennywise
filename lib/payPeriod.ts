@@ -73,3 +73,20 @@ export function payPeriodMonth(range: { end: Date }) {
 export function cutoffLabel(cutoff: number) {
   return cutoff === 1 ? "1st cutoff (10th)" : "2nd cutoff (25th)";
 }
+
+/**
+ * The pay period a calendar day belongs to. Noon is used deliberately: it is
+ * far from either edge of the day, so no daylight or offset wobble can push a
+ * date into the neighbouring period.
+ */
+export function payPeriodOfDay(day: string) {
+  const [y, m, d] = day.split("-").map(Number);
+  const range = payPeriodRange(new TZDate(y, m - 1, d, 12, 0, TZ));
+  const cutoff = cutoffNumber(range);
+
+  return {
+    key: `${payPeriodMonth(range)}-${cutoff}`,
+    label: payPeriodLabel(range),
+    cutoff,
+  };
+}

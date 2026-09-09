@@ -1,3 +1,4 @@
+import { payPeriodOfDay } from "./payPeriod";
 import { bucketKeyOf, bucketsFor, type Period } from "./period";
 
 export type InsightEntry = {
@@ -99,4 +100,22 @@ export function habits(entries: InsightEntry[], days: string[]) {
     longestQuiet,
     daysCounted: counted.length,
   };
+}
+
+/**
+ * The period split by pay packet, since money arrives twice a month and is
+ * spent against whichever one is current. A calendar month straddles three of
+ * these: its own two, plus the tail that belongs to next month's first.
+ */
+export function byCutoff(entries: InsightEntry[]) {
+  const map = new Map<string, { key: string; label: string; cutoff: number; total: number }>();
+
+  for (const entry of entries) {
+    const { key, label, cutoff } = payPeriodOfDay(entry.day);
+    const row = map.get(key) ?? { key, label, cutoff, total: 0 };
+    row.total += entry.amountMinor;
+    map.set(key, row);
+  }
+
+  return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
