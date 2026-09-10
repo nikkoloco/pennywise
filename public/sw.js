@@ -8,7 +8,13 @@
  * what a queued expense actually means.
  */
 
-const CACHE = "pennywise-v1";
+/**
+ * Bump this whenever what is cached could be stale against the code that ships
+ * with it. `activate` deletes every other cache, so a bump is what evicts a
+ * poisoned one from browsers already carrying it — the only lever that reaches
+ * them, since anything shipped in the app bundle would itself be served stale.
+ */
+const CACHE = "pennywise-v2";
 const OFFLINE_FALLBACK = "/";
 
 self.addEventListener("install", () => {
