@@ -1,67 +1,74 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { cookies } from "next/headers";
 import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { hashPin, lockoutFor, verifyPin } from "@/lib/pin";
-import { SESSION_COOKIE, SESSION_MAX_AGE, signSession } from "@/lib/session";
+import { hashSecret, lockoutFor, minutesLeft, verifySecret } from "@/lib/credentials";
+import { startSession } from "@/lib/sessionCookie";
+import { currentUserId } from "@/lib/user";
+
+/**
+ * The PIN. It never proves who you are, the password did that at sign-in; it
+ * only decides whether the app is open on this phone. So everything here acts
+ * on the account already in the session, and locking rewrites that session
+ * rather than throwing it away.
+ *
+ * A PIN is optional. Forgetting one is not a dead end either: sign out, sign
+ * back in with the password, and turn it off in Settings.
+ */
 
 const pinSchema = z.string().regex(/^\d{6}$/);
 
-async function soleUser() {
-  const [user] = await db.select().from(users).limit(1);
+export type UnlockResult = { ok: true } | { ok: false; message: string };
+
+async function pinState(userId: string) {
+  const [user] = await db
+    .select({
+      pinHash: users.pinHash,
+      failed: users.pinFailedAttempts,
+      lockedUntil: users.pinLockedUntil,
+    })
+    .from(users)
+    .where(eq(users.id, userId));
   return user;
 }
 
-async function startSession(userId: string) {
-  (await cookies()).set(SESSION_COOKIE, await signSession(userId), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
-  });
-}
-
-export type UnlockResult = { ok: true } | { ok: false; message: string };
-
-/** First run only: claims the PIN if the account does not have one yet. */
 export async function setPin(pin: string): Promise<UnlockResult> {
+  const userId = await currentUserId();
+
   const parsed = pinSchema.safeParse(pin);
   if (!parsed.success) return { ok: false, message: "Six digits." };
 
-  const user = await soleUser();
+  const user = await pinState(userId);
   if (user.pinHash) return { ok: false, message: "A PIN is already set." };
 
-  await db
-    .update(users)
-    .set({ pinHash: hashPin(parsed.data) })
-    .where(eq(users.id, user.id));
+  await db.update(users).set({ pinHash: hashSecret(parsed.data) }).where(eq(users.id, userId));
 
-  await startSession(user.id);
+  await startSession(userId, true);
   return { ok: true };
 }
 
 export async function unlock(pin: string): Promise<UnlockResult> {
+  const userId = await currentUserId();
+
   const parsed = pinSchema.safeParse(pin);
   if (!parsed.success) return { ok: false, message: "Six digits." };
 
-  const user = await soleUser();
+  const user = await pinState(userId);
   if (!user.pinHash) return { ok: false, message: "No PIN set yet." };
 
-  if (user.pinLockedUntil && user.pinLockedUntil > new Date()) {
-    const minutes = Math.ceil((+user.pinLockedUntil - Date.now()) / 60_000);
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const minutes = minutesLeft(user.lockedUntil);
     return { ok: false, message: `Locked for ${minutes} more minute${minutes === 1 ? "" : "s"}.` };
   }
 
-  if (!verifyPin(parsed.data, user.pinHash)) {
-    const attempts = user.pinFailedAttempts + 1;
+  if (!verifySecret(parsed.data, user.pinHash)) {
+    const attempts = user.failed + 1;
     await db
       .update(users)
       .set({ pinFailedAttempts: attempts, pinLockedUntil: lockoutFor(attempts) })
-      .where(eq(users.id, user.id));
+      .where(eq(users.id, userId));
 
     const left = 5 - attempts;
     return {
@@ -73,12 +80,23 @@ export async function unlock(pin: string): Promise<UnlockResult> {
   await db
     .update(users)
     .set({ pinFailedAttempts: 0, pinLockedUntil: null })
-    .where(eq(users.id, user.id));
+    .where(eq(users.id, userId));
 
-  await startSession(user.id);
+  await startSession(userId, true);
   return { ok: true };
 }
 
+/** Turning the PIN off. Only reachable from Settings, which needs the app open. */
+export async function clearPin() {
+  const userId = await currentUserId();
+  await db
+    .update(users)
+    .set({ pinHash: null, pinFailedAttempts: 0, pinLockedUntil: null })
+    .where(eq(users.id, userId));
+}
+
+/** Locking is not signing out: the session keeps who you are, and loses only
+ *  the fact that the app was open. */
 export async function lockNow() {
-  (await cookies()).delete(SESSION_COOKIE);
+  await startSession(await currentUserId(), false);
 }

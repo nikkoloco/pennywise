@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pennywise
 
-## Getting Started
+A tap-first spending log. Records what leaves, never what remains.
 
-First, run the development server:
+Next.js on Vercel, Postgres on Neon, Drizzle in between. It installs from the
+browser on both iOS and Android, so there is no app to ship and nothing to pay
+for at this size.
+
+## Running it
 
 ```bash
+npm install
+npm run seed   # first account, and default categories for existing ones
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | What it does |
+| --- | --- |
+| `DATABASE_URL` | Neon connection string |
+| `SESSION_SECRET` | Signs the session cookie. Changing it signs everybody out |
+| `SIGNUP_INVITE_CODE` | Required to create an account. Unset closes sign-up |
+| `SEED_EMAIL` | Email for the account `npm run seed` creates |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Migrations: `npx drizzle-kit generate --name <what_changed>` then
+`npx drizzle-kit migrate`.
 
-## Learn More
+## Accounts
 
-To learn more about Next.js, take a look at the following resources:
+Two credentials, doing two different jobs.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+A **password** proves who you are, at `/signin`, and lasts a month. A **PIN** is
+optional and only decides whether the app is open on this phone, so locking
+keeps you signed in and asks for six digits to come back. Forgetting the PIN is
+not a dead end: sign out, sign in with the password, turn it off in Settings.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+New accounts need the invite code and arrive with the default categories and
+tiles already set up.
 
-## Deploy on Vercel
+## Installing on a phone
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Open the URL and add it to the Home Screen: **Share → Add to Home Screen** in
+Safari on iOS, **⋮ → Install app** in Chrome on Android. It then runs full
+screen, keeps working with no signal, and queues taps made offline.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Lock screen logging through Apple Shortcuts and Siri is iOS only; Settings →
+Lock screen logging issues the token for it.

@@ -9,11 +9,11 @@ import { SESSION_COOKIE, readSessionToken } from "./session";
  * first await on every page and every action, so a query here would sit in
  * front of all the real work rather than run alongside it.
  *
- * Middleware already turned away unauthenticated requests, so reaching here
- * without a session is a bug rather than a case to handle politely.
+ * The proxy already turned away requests without a session, so reaching here
+ * without one is a bug rather than a case to handle politely.
  */
 export const currentUserId = cache(async () => {
-  const userId = await readSessionToken((await cookies()).get(SESSION_COOKIE)?.value);
-  if (!userId) throw new Error("No session");
-  return userId;
+  const session = await readSessionToken((await cookies()).get(SESSION_COOKIE)?.value);
+  if (!session) throw new Error("No session");
+  return session.userId;
 });

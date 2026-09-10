@@ -31,7 +31,16 @@ export const recurringUnit = pgEnum("recurring_unit", ["week", "month"]);
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
-  /** Null until a PIN is chosen on first unlock. */
+  /**
+   * Null only on the first account, made by the seed script before logins
+   * existed, until its owner claims it in Settings. Every account created
+   * through sign-up has one from the start.
+   */
+  passwordHash: text("password_hash"),
+  /** Sign-in lockout, kept in the row so it survives any serverless instance. */
+  passwordFailedAttempts: integer("password_failed_attempts").notNull().default(0),
+  passwordLockedUntil: timestamp("password_locked_until", { withTimezone: true }),
+  /** Null until a PIN is chosen. Optional: it locks a signed-in phone, nothing more. */
   pinHash: text("pin_hash"),
   /** Brute-force state lives in the row, so a lockout survives any instance. */
   pinFailedAttempts: integer("pin_failed_attempts").notNull().default(0),

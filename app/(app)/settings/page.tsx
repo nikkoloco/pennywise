@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { AccountCard } from "@/components/settings/AccountCard";
 import { CategoryManager } from "@/components/settings/CategoryManager";
 import { ExportButtons } from "@/components/settings/ExportButtons";
-import { LockButton } from "@/components/settings/LockButton";
 import { Card, SectionLabel } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getCategories } from "@/db/queries";
+import { getAccount, getCategories } from "@/db/queries";
 import { currentUserId } from "@/lib/user";
 
 const SETTINGS = [
@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const userId = await currentUserId();
-  const categories = await getCategories(userId);
+  const [account, categories] = await Promise.all([getAccount(userId), getCategories(userId)]);
 
   return (
     <main className="flex flex-1 flex-col gap-5 pb-6">
@@ -78,7 +78,11 @@ export default async function SettingsPage() {
       </section>
 
       <section className="px-6">
-        <LockButton />
+        <SectionLabel>Account</SectionLabel>
+        <p className="mt-2 mb-3 text-sm text-sky-300">
+          Signed in as {account.email}.
+        </p>
+        <AccountCard email={account.email} hasPin={account.hasPin} />
       </section>
 
       <section className="px-6">

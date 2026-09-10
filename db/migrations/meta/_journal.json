@@ -92,6 +92,13 @@
       "when": 1789029853710,
       "tag": "0012_drop_recurring_every_months",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789047936155,
+      "tag": "0013_add_password",
+      "breakpoints": true
     }
   ]
 }

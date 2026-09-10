@@ -9,9 +9,19 @@ import {
   quickTaps,
   recurring,
   upcoming,
+  users,
 } from "./schema";
 
 type Range = { start: Date; end: Date };
+
+/** Who is signed in, and whether they have put a PIN on this account. */
+export async function getAccount(userId: string) {
+  const [account] = await db
+    .select({ email: users.email, hasPin: sql<boolean>`${users.pinHash} is not null` })
+    .from(users)
+    .where(eq(users.id, userId));
+  return account;
+}
 
 /** Every category, parents and subgroups alike. Callers decide how to nest. */
 export async function getCategories(userId: string) {

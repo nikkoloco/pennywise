@@ -8,7 +8,14 @@ import { setPin, unlock } from "@/app/lock-actions";
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
 const LENGTH = 6;
 
-export function PinPad({ needsSetup }: { needsSetup: boolean }) {
+export function PinPad({
+  needsSetup,
+  done = "/",
+}: {
+  needsSetup: boolean;
+  /** Where a correct PIN lands: the app on unlock, Settings when setting one. */
+  done?: string;
+}) {
   const router = useRouter();
   const [pin, setPinValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +26,7 @@ export function PinPad({ needsSetup }: { needsSetup: boolean }) {
     setError(null);
     const result = needsSetup ? await setPin(value) : await unlock(value);
     if (result.ok) {
-      router.replace("/");
+      router.replace(done);
       router.refresh();
       return;
     }
