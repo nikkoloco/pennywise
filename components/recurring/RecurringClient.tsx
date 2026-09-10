@@ -25,15 +25,17 @@ export type RecurringCard = {
   emoji: string;
   categoryId: string;
   amountMinor: number;
-  everyMonths: number;
+  every: number;
+  unit: "week" | "month";
   runsForMonths: number | null;
-  cutoff: number;
+  /** Null lands in both cutoffs. */
+  cutoff: number | null;
   startMonth: string;
   payOnDay: number | null;
-  /** Owed in the cutoff being shown. */
-  due: boolean;
-  /** Already settled by a logged expense inside that cutoff. */
-  paid: boolean;
+  /** How many payments the cutoff being shown owes. Weekly owes several. */
+  dueCount: number;
+  /** How many of them a logged expense has already settled. */
+  paidCount: number;
 };
 
 type Props = {
@@ -62,9 +64,10 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
       emoji: card.emoji,
       categoryId: card.categoryId,
       amountMinor: card.amountMinor,
-      everyMonths: card.everyMonths,
+      every: card.every,
+      unit: card.unit,
       runsForMonths: card.runsForMonths,
-      cutoff: card.cutoff === 2 ? 2 : 1,
+      cutoff: card.cutoff === null ? null : card.cutoff === 2 ? 2 : 1,
       startMonth: card.startMonth.slice(0, 7),
       payOnDay: card.payOnDay,
     });
@@ -98,13 +101,14 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
           <Card>
             <p className="text-sm text-sky-200">
               Subscriptions, instalments and bills go here. Say how often each
-              one lands and which cutoff it comes out of, and it will show up as
-              due when that cutoff comes around.
+              one lands — weekly and twice a month included — and it will show
+              up as due when the cutoff it comes out of comes around.
             </p>
           </Card>
         ) : (
           cards.map((card) => {
-            const owed = card.due && !card.paid;
+            const owed = card.paidCount < card.dueCount;
+            const note = status(card);
 
             return (
               <Card key={card.id} className={owed ? "border-gold-500/40" : undefined}>
@@ -120,7 +124,9 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
                       {card.name}
                     </p>
                     <p className="text-xs text-sky-300">
-                      {scheduleLabel(card)} · {cutoffLabel(card.cutoff)}
+                      {scheduleLabel(card)}
+                      {/* A schedule that spans both halves has no cutoff to name. */}
+                      {card.cutoff !== null && ` · ${cutoffLabel(card.cutoff)}`}
                     </p>
                     {card.payOnDay !== null && (
                       <p className="text-xs text-sky-300">
@@ -132,8 +138,8 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
                   <Amount minor={card.amountMinor} size="sm" />
                 </button>
 
-                <div className="mt-4 flex items-center justify-between">
-                  {owed ? (
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  {owed && (
                     <button
                       type="button"
                       onClick={() => pay(card)}
@@ -141,11 +147,9 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
                     >
                       Log this payment
                     </button>
-                  ) : (
-                    <p className="text-xs text-sky-300">
-                      {card.paid ? "logged this cutoff" : "not due this cutoff"}
-                    </p>
                   )}
+
+                  {note && <p className="text-xs text-sky-300">{note}</p>}
 
                   <button
                     type="button"
@@ -175,6 +179,17 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
       />
     </>
   );
+}
+
+/**
+ * Where the cutoff stands with this payment. Nothing to say when a single
+ * payment is owed: the button beside it already says it. A schedule that lands
+ * more than once counts them out, because one tap is not the whole of it.
+ */
+function status(card: RecurringCard) {
+  if (card.dueCount === 0) return "not due this cutoff";
+  if (card.dueCount > 1) return `${card.paidCount} of ${card.dueCount} logged this cutoff`;
+  return card.paidCount > 0 ? "logged this cutoff" : null;
 }
 
 /** "1st", "2nd", "3rd", "4th" and the rest, for a day of the month. */

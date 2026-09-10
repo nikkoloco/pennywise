@@ -69,6 +69,17 @@ export function payPeriodMonth(range: { end: Date }) {
   return monthKey(range.end);
 }
 
+/**
+ * The pay period a month's cutoff spans, named the way the app names periods:
+ * cutoff 1 of March closes on 10 March and so opens on 26 February. Resolved
+ * from its own payday at noon, so the answer comes from the same code that
+ * decides which period today is in.
+ */
+export function payPeriodOf(month: string, cutoff: number) {
+  const [y, m] = month.split("-").map(Number);
+  return payPeriodRange(new TZDate(y, m - 1, PAYDAYS[cutoff - 1], 12, 0, TZ));
+}
+
 /** How a cutoff is described in the interface. */
 export function cutoffLabel(cutoff: number) {
   return cutoff === 1 ? "1st cutoff (10th)" : "2nd cutoff (25th)";

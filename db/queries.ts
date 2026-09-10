@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "./index";
 import {
@@ -148,7 +148,8 @@ export async function getRecurring(userId: string) {
       emoji: recurring.emoji,
       categoryId: recurring.categoryId,
       amountMinor: recurring.amountMinor,
-      everyMonths: recurring.everyMonths,
+      every: recurring.every,
+      unit: recurring.unit,
       runsForMonths: recurring.runsForMonths,
       cutoff: recurring.cutoff,
       startMonth: recurring.startMonth,
@@ -160,12 +161,14 @@ export async function getRecurring(userId: string) {
 }
 
 /**
- * Which recurring payments were actually settled inside a window. Being due is
- * derived from the schedule; being paid can only come from a logged expense.
+ * How many times each recurring payment was actually settled inside a window.
+ * Being due is derived from the schedule; being paid can only come from a
+ * logged expense. A count rather than a flag, because a weekly payment is owed
+ * more than once inside one pay period.
  */
 export async function getRecurringPaid(userId: string, range: Range) {
   const rows = await db
-    .selectDistinct({ recurringId: expenses.recurringId })
+    .select({ recurringId: expenses.recurringId, paid: count() })
     .from(expenses)
     .where(
       and(
@@ -174,7 +177,8 @@ export async function getRecurringPaid(userId: string, range: Range) {
         gte(expenses.spentAt, range.start),
         lte(expenses.spentAt, range.end),
       ),
-    );
+    )
+    .groupBy(expenses.recurringId);
 
-  return new Set(rows.map((r) => r.recurringId as string));
+  return new Map(rows.map((r) => [r.recurringId as string, r.paid]));
 }

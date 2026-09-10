@@ -302,10 +302,13 @@ const recurringSchema = z.object({
   emoji: z.string().trim().min(1).max(8),
   categoryId: z.uuid(),
   amountMinor: z.number().int().positive(),
-  everyMonths: z.number().int().min(1).max(60),
+  /** How many `unit`s between payments: 1 month is monthly, 1 week weekly. */
+  every: z.number().int().min(1).max(60),
+  unit: z.enum(["week", "month"]),
   /** Null runs forever, which is what a subscription usually does. */
   runsForMonths: z.number().int().min(1).max(600).nullable(),
-  cutoff: z.union([z.literal(1), z.literal(2)]),
+  /** Null lands in both cutoffs, which is what twice a month and weekly do. */
+  cutoff: z.union([z.literal(1), z.literal(2)]).nullable(),
   startMonth: z.string().regex(/^\d{4}-\d{2}$/),
   /** The day it is taken when that is fixed, null when it varies. */
   payOnDay: z.number().int().min(1).max(31).nullable(),

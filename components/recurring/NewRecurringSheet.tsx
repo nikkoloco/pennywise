@@ -8,6 +8,13 @@ import { CutoffToggle } from "@/components/ui/CutoffToggle";
 import { DEFAULT_EMOJI, EmojiPicker } from "@/components/ui/EmojiPicker";
 import { Sheet } from "@/components/ui/Sheet";
 import { draftToMinor, minorToDraft } from "@/lib/money";
+import {
+  CADENCES,
+  cadenceByKey,
+  cadenceOf,
+  spansBothCutoffs,
+  type CadenceKey,
+} from "@/lib/recurring";
 
 export type CategoryChoice = { id: string; name: string; emoji: string };
 
@@ -16,9 +23,11 @@ export type RecurringInput = {
   emoji: string;
   categoryId: string;
   amountMinor: number;
-  everyMonths: number;
+  every: number;
+  unit: "week" | "month";
   runsForMonths: number | null;
-  cutoff: 1 | 2;
+  /** Null lands in both cutoffs, which is what twice a month and weekly do. */
+  cutoff: 1 | 2 | null;
   startMonth: string;
   payOnDay: number | null;
 };
@@ -37,14 +46,6 @@ type Props = {
   initial?: RecurringDraft | null;
   onSubmit: (entry: RecurringInput) => void;
 };
-
-/** Common rhythms, so the usual case is a tap rather than typing a number. */
-const FREQUENCIES = [
-  { months: 1, label: "Monthly" },
-  { months: 3, label: "Quarterly" },
-  { months: 6, label: "Twice a year" },
-  { months: 12, label: "Yearly" },
-];
 
 export function NewRecurringSheet({ open, onClose, initial, ...rest }: Props) {
   return (
@@ -72,7 +73,9 @@ function RecurringForm({
   const [emoji, setEmoji] = useState(initial?.emoji ?? DEFAULT_EMOJI);
   const [categoryId, setCategoryId] = useState<string | null>(initial?.categoryId ?? null);
   const [draft, setDraft] = useState(initial ? minorToDraft(initial.amountMinor) : "");
-  const [everyMonths, setEveryMonths] = useState(initial?.everyMonths ?? 1);
+  const [cadence, setCadence] = useState<CadenceKey>(
+    initial ? cadenceOf(initial).key : "monthly",
+  );
   const [runsFor, setRunsFor] = useState(numberField(initial?.runsForMonths));
   const [payOn, setPayOn] = useState<1 | 2>(initial?.cutoff ?? (cutoff === 1 ? 1 : 2));
   const [from, setFrom] = useState(initial?.startMonth ?? startMonth);
@@ -80,6 +83,10 @@ function RecurringForm({
 
   const amountMinor = draftToMinor(draft);
   const ready = name.trim() && categoryId && amountMinor > 0 && from;
+  // Weekly and twice a month land in both halves of the month's pay by their
+  // nature, so there is no cutoff to pick and no single day it is taken on.
+  const bothCutoffs = spansBothCutoffs(cadence);
+  const schedule = cadenceByKey(cadence);
 
   return (
     <div className="flex flex-col gap-4">
@@ -118,18 +125,18 @@ function RecurringForm({
       <div>
         <p className="mb-2 text-xs tracking-[0.15em] text-sky-300 uppercase">How often</p>
         <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
-          {FREQUENCIES.map((f) => (
+          {CADENCES.map((c) => (
             <button
-              key={f.months}
+              key={c.key}
               type="button"
-              onClick={() => setEveryMonths(f.months)}
+              onClick={() => setCadence(c.key)}
               className={`shrink-0 rounded-full px-3 py-2 text-sm ${
-                f.months === everyMonths
+                c.key === cadence
                   ? "bg-sky-400 font-semibold text-ink-900"
                   : "bg-ink-700 text-sky-200"
               }`}
             >
-              {f.label}
+              {c.label}
             </button>
           ))}
         </div>
@@ -142,6 +149,7 @@ function RecurringForm({
         <p className="mb-2 text-xs text-sky-400">
           The month the schedule starts. Set it back for something already
           part-paid, so a run length still ends when it really does.
+          {cadence === "weekly" && " Weeks are counted from the 1st of it."}
         </p>
         <input
           type="month"
@@ -167,25 +175,33 @@ function RecurringForm({
         />
       </div>
 
-      <CutoffToggle value={payOn} onChange={setPayOn} />
+      {bothCutoffs ? (
+        <p className="text-xs text-sky-400">
+          Comes out of both cutoffs, so there is no half of the month to pick.
+        </p>
+      ) : (
+        <CutoffToggle value={payOn} onChange={setPayOn} />
+      )}
 
-      <div>
-        <p className="mb-1 text-xs tracking-[0.15em] text-sky-300 uppercase">
-          On a fixed day
-        </p>
-        <p className="mb-2 text-xs text-sky-400">
-          The day of the month it is taken, when it is always the same. Leave it
-          blank if the date moves around.
-        </p>
-        <input
-          inputMode="numeric"
-          value={fixedDay}
-          onChange={(e) => setFixedDay(digitsOnly(e.target.value, 2))}
-          placeholder="e.g. 5"
-          aria-label="Day of the month it is paid"
-          className="min-h-11 w-full rounded-2xl bg-ink-700 px-4 text-sm text-sky-100 placeholder:text-sky-400 focus:outline-none"
-        />
-      </div>
+      {!bothCutoffs && (
+        <div>
+          <p className="mb-1 text-xs tracking-[0.15em] text-sky-300 uppercase">
+            On a fixed day
+          </p>
+          <p className="mb-2 text-xs text-sky-400">
+            The day of the month it is taken, when it is always the same. Leave
+            it blank if the date moves around.
+          </p>
+          <input
+            inputMode="numeric"
+            value={fixedDay}
+            onChange={(e) => setFixedDay(digitsOnly(e.target.value, 2))}
+            placeholder="e.g. 5"
+            aria-label="Day of the month it is paid"
+            className="min-h-11 w-full rounded-2xl bg-ink-700 px-4 text-sm text-sky-100 placeholder:text-sky-400 focus:outline-none"
+          />
+        </div>
+      )}
 
       <div>
         <p className="mb-2 text-xs tracking-[0.15em] text-sky-300 uppercase">Amount</p>
@@ -203,11 +219,12 @@ function RecurringForm({
             emoji,
             categoryId,
             amountMinor,
-            everyMonths,
+            every: schedule.every,
+            unit: schedule.unit,
             runsForMonths: runsFor ? Number(runsFor) : null,
-            cutoff: payOn,
+            cutoff: bothCutoffs ? null : payOn,
             startMonth: from,
-            payOnDay: fixedDay ? clampDay(Number(fixedDay)) : null,
+            payOnDay: bothCutoffs || !fixedDay ? null : clampDay(Number(fixedDay)),
           });
           onClose();
         }}

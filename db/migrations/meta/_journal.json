@@ -78,6 +78,20 @@
       "when": 1788944106905,
       "tag": "0010_miscellaneous_last",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789029823946,
+      "tag": "0011_recurring_interval_unit",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789029853710,
+      "tag": "0012_drop_recurring_every_months",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,9 @@ import {
 /** Where an expense came from. Lets the app show what Siri and Shortcuts logged. */
 export const expenseSource = pgEnum("expense_source", ["app", "shortcut", "siri"]);
 
+/** The unit a recurring payment's interval is counted in. */
+export const recurringUnit = pgEnum("recurring_unit", ["week", "month"]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
@@ -93,10 +96,11 @@ export const events = pgTable(
 /**
  * A payment that comes back: a subscription, an instalment, an annual fee.
  *
- * Two numbers describe the schedule. `everyMonths` is how often it lands, and
- * `runsForMonths` is how long that goes on for, counted in months from the
- * start rather than in payments, so "every 3 months for a year" is four
- * payments and reads the way it is said.
+ * Three fields describe the schedule. `every` and `unit` are how often it
+ * lands, so 1 month is monthly and 1 week weekly, and `runsForMonths` is how
+ * long that goes on for, counted in months from the start rather than in
+ * payments, so "every 3 months for a year" is four payments and reads the way
+ * it is said.
  *
  * Nothing here is ever logged automatically. A due payment is an invitation to
  * tap, because the app's one rule is that it records money that actually left,
@@ -115,12 +119,16 @@ export const recurring = pgTable(
       .notNull()
       .references(() => categories.id, { onDelete: "restrict" }),
     amountMinor: integer("amount_minor").notNull(),
-    /** How often it lands, in months. 1 is monthly, 12 annual. */
-    everyMonths: integer("every_months").notNull().default(1),
+    /** How many `unit`s between payments. 1 month is monthly, 12 annual. */
+    every: integer("every").notNull().default(1),
+    unit: recurringUnit("unit").notNull().default("month"),
     /** Months from the start before it stops. Null runs forever. */
     runsForMonths: integer("runs_for_months"),
-    /** Which pay period it comes out of: 1 ends on the 10th, 2 on the 25th. */
-    cutoff: integer("cutoff").notNull(),
+    /**
+     * Which pay period it comes out of: 1 ends on the 10th, 2 on the 25th.
+     * Null lands in both, which is how twice a month and weekly are stored.
+     */
+    cutoff: integer("cutoff"),
     /** Where the schedule counts from, always the first of that month. */
     startMonth: date("start_month").notNull(),
     /** The day of the month it is taken, when that is fixed. Null when it varies. */

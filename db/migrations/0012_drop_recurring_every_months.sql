@@ -1,0 +1,1 @@
+ALTER TABLE "recurring" DROP COLUMN "every_months";
