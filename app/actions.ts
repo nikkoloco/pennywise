@@ -44,10 +44,32 @@ export async function logExpense(input: z.infer<typeof logSchema>) {
     recurringId: recurringId ?? null,
     spentAt: new Date(),
   });
+  if (eventId) await settleIfPaid(userId, eventId);
 
   revalidatePath("/");
   revalidatePath("/events");
   revalidatePath("/recurring");
+}
+
+/**
+ * A one-off plan whose budget has all been spent is done, so it leaves the
+ * list on its own. Archived rather than deleted: the spend stays attributed.
+ * An annual plan is left alone, since it comes round again next year.
+ */
+async function settleIfPaid(userId: string, eventId: string) {
+  const [plan] = await db
+    .select({ budgetMinor: events.budgetMinor, isRecurringAnnual: events.isRecurringAnnual })
+    .from(events)
+    .where(and(eq(events.id, eventId), eq(events.userId, userId)));
+  if (!plan || plan.isRecurringAnnual) return;
+
+  const [{ spent }] = await db
+    .select({ spent: sql<number>`coalesce(sum(${expenses.amountMinor}), 0)::int` })
+    .from(expenses)
+    .where(and(eq(expenses.userId, userId), eq(expenses.eventId, eventId)));
+  if (spent < plan.budgetMinor) return;
+
+  await db.update(events).set({ isArchived: true }).where(eq(events.id, eventId));
 }
 
 export async function deleteExpense(id: string) {
@@ -377,8 +399,10 @@ export async function updateExpense(input: z.infer<ReturnType<typeof withId<type
       eventId: eventId ?? null,
     })
     .where(and(eq(expenses.id, id), eq(expenses.userId, userId)));
+  if (eventId) await settleIfPaid(userId, eventId);
 
   revalidatePath("/");
+  revalidatePath("/events");
   revalidatePath("/calendar");
   revalidatePath("/insights");
 }
