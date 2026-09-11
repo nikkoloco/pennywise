@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createEvent, deleteEvent, updateEvent } from "@/app/actions";
+import { createEvent, deleteEvent, logExpense, updateEvent } from "@/app/actions";
 import {
   NewEventSheet,
   type PlanDraft,
   type PlanInput,
 } from "@/components/events/NewEventSheet";
+import {
+  LogSheet,
+  type CategoryOption,
+  type ExpensePrefill,
+} from "@/components/keypad/LogSheet";
 import { Amount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -30,11 +35,17 @@ export type EventCard = {
   cutoff: number;
 };
 
-export function EventsClient({ events }: { events: EventCard[] }) {
+type Props = {
+  events: EventCard[];
+  categories: CategoryOption[];
+};
+
+export function EventsClient({ events, categories }: Props) {
   const schedule = usePaySchedule();
   const [, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<PlanDraft | null>(null);
+  const [logging, setLogging] = useState<ExpensePrefill | null>(null);
 
   /** One sheet serves both jobs; which it is depends on whether it was given a plan. */
   const sheetOpen = adding || editing !== null;
@@ -48,6 +59,19 @@ export function EventsClient({ events }: { events: EventCard[] }) {
     startTransition(() =>
       editing ? updateEvent({ ...input, id: editing.id }) : createEvent(input),
     );
+  }
+
+  /**
+   * Logging is the same action as anywhere else, carrying the plan's id so the
+   * spend counts towards it. What is left of the budget is offered as the
+   * amount, since that is usually the bill; a category still has to be picked.
+   */
+  function spend(card: EventCard) {
+    setLogging({
+      amountMinor: Math.max(0, card.budgetMinor - card.spentMinor),
+      note: card.name,
+      eventId: card.id,
+    });
   }
 
   function edit(card: EventCard) {
@@ -121,17 +145,25 @@ export function EventsClient({ events }: { events: EventCard[] }) {
                   />
                 </div>
 
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-xs text-umber-300">
-                    {formatMinor(event.spentMinor)} spent ·{" "}
-                    {over
-                      ? `${formatMinor(-left)} over`
-                      : `${formatMinor(left)} left`}
-                  </p>
+                <p className="mt-2 text-xs text-umber-300">
+                  {formatMinor(event.spentMinor)} spent ·{" "}
+                  {over
+                    ? `${formatMinor(-left)} over`
+                    : `${formatMinor(left)} left`}
+                </p>
+
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => spend(event)}
+                    className="min-h-11 rounded-full bg-gold-500 px-4 text-sm font-semibold text-ink-900"
+                  >
+                    Log spending
+                  </button>
                   <button
                     type="button"
                     onClick={() => startTransition(() => deleteEvent(event.id))}
-                    className="text-xs font-semibold text-umber-300"
+                    className="min-h-11 px-3 text-xs font-semibold text-umber-300"
                   >
                     Remove
                   </button>
@@ -147,6 +179,20 @@ export function EventsClient({ events }: { events: EventCard[] }) {
         onClose={closeSheet}
         initial={editing}
         onSubmit={submit}
+      />
+
+      <LogSheet
+        open={logging !== null}
+        onClose={() => setLogging(null)}
+        categories={categories}
+        events={events.map((e) => ({ id: e.id, name: e.name, emoji: e.emoji }))}
+        initialCategoryId={null}
+        prefill={logging}
+        onSubmit={(amountMinor, categoryId, note, eventId) =>
+          startTransition(() =>
+            logExpense({ categoryId, amountMinor, note: note || undefined, eventId }),
+          )
+        }
       />
     </>
   );

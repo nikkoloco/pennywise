@@ -10,6 +10,7 @@ import {
   getTotalIn,
   getUpcoming,
 } from "@/db/queries";
+import { categoryGroups } from "@/lib/categories";
 import { buildEventCards, plannedRemaining } from "@/lib/events";
 import { payPeriodLabel, payPeriodRange } from "@/lib/payPeriod";
 import { dayRange, formatLongDate, monthKey, monthRange, now } from "@/lib/time";
@@ -35,19 +36,6 @@ export default async function Home() {
       getUpcoming(userId),
     ]);
 
-  // Tiles and the keypad offer top-level categories; subgroups hang off them
-  // and are chosen only once a category has been picked.
-  const groups = categories
-    .filter((c) => c.parentId === null)
-    .map((parent) => ({
-      id: parent.id,
-      name: parent.name,
-      emoji: parent.emoji,
-      children: categories
-        .filter((c) => c.parentId === parent.id)
-        .map((child) => ({ id: child.id, name: child.name })),
-    }));
-
   // Only what is due this month, in cutoff order. Home is the screen you open
   // to decide about today, and a plan three months out cannot inform that; it
   // has a tab of its own. They still sit in a row you swipe, so several of them
@@ -63,7 +51,7 @@ export default async function Home() {
       <PageHeader title="Today" subtitle={formatLongDate(now())} />
       <HomeClient
         tiles={tiles}
-        categories={groups}
+        categories={categoryGroups(categories)}
         events={cards.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
         today={today}
         monthTotal={monthTotal}

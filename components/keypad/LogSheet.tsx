@@ -18,6 +18,13 @@ export type CategoryOption = {
 };
 export type EventOption = { id: string; name: string; emoji: string };
 
+/** A new expense that opens with its answers already in, e.g. from a plan. */
+export type ExpensePrefill = {
+  amountMinor: number;
+  note: string;
+  eventId: string;
+};
+
 /** An expense being corrected rather than created. */
 export type ExpenseDraft = {
   id: string;
@@ -35,6 +42,8 @@ type Props = {
   initialCategoryId: string | null;
   /** Present when correcting an entry that is already logged. */
   initial?: ExpenseDraft | null;
+  /** Present when the entry is new but its amount, note and plan are known. */
+  prefill?: ExpensePrefill | null;
   onSubmit: (
     amountMinor: number,
     categoryId: string,
@@ -51,7 +60,11 @@ export function LogSheet({ open, onClose, ...rest }: Props) {
   return (
     <Sheet open={open} onClose={onClose}>
       {/* Keyed so opening a different entry starts from that entry's values. */}
-      <LogForm key={rest.initial?.id ?? rest.initialCategoryId ?? "new"} {...rest} onClose={onClose} />
+      <LogForm
+        key={rest.initial?.id ?? rest.prefill?.eventId ?? rest.initialCategoryId ?? "new"}
+        {...rest}
+        onClose={onClose}
+      />
     </Sheet>
   );
 }
@@ -61,11 +74,13 @@ function LogForm({
   events,
   initialCategoryId,
   initial,
+  prefill,
   onSubmit,
   onClose,
 }: Omit<Props, "open"> & { onClose: () => void }) {
   const [, startTransition] = useTransition();
-  const [draft, setDraft] = useState(initial ? minorToDraft(initial.amountMinor) : "");
+  const given = initial ?? prefill;
+  const [draft, setDraft] = useState(given ? minorToDraft(given.amountMinor) : "");
   // An entry filed under a subgroup opens with that subgroup already chosen.
   const parentOf = (id: string) =>
     categories.find((c) => c.id === id || c.children.some((k) => k.id === id)) ?? null;
@@ -76,8 +91,8 @@ function LogForm({
   );
   const [addingChild, setAddingChild] = useState(false);
   const [childName, setChildName] = useState("");
-  const [note, setNote] = useState(initial?.note ?? "");
-  const [eventId, setEventId] = useState<string | null>(initial?.eventId ?? null);
+  const [note, setNote] = useState(given?.note ?? "");
+  const [eventId, setEventId] = useState<string | null>(given?.eventId ?? null);
 
   const group = categories.find((c) => c.id === groupId) ?? null;
   // The subgroup is the more precise answer, so it wins when one is chosen.
