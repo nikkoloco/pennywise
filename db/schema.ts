@@ -113,7 +113,7 @@ export const events = pgTable(
 );
 
 /**
- * A payment that comes back: a subscription, an instalment, an annual fee.
+ * A payment that comes back: a subscription, an installment, an annual fee.
  *
  * Three fields describe the schedule. `every` and `unit` are how often it
  * lands, so 1 month is monthly and 1 week weekly, and `runsForMonths` is how

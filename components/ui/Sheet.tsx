@@ -20,7 +20,7 @@ export function Sheet({ open, onClose, title, children }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-void/70"
+            className="fixed inset-0 z-40 bg-scrim"
           />
           <motion.div
             role="dialog"

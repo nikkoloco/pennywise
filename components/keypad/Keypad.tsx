@@ -21,7 +21,7 @@ export function Keypad({ draft, onChange }: Props) {
           key={key}
           type="button"
           onClick={() => onChange(pressAmountKey(draft, key))}
-          whileTap={{ scale: 0.93, backgroundColor: "#17275e" }}
+          whileTap={{ scale: 0.93, backgroundColor: "var(--color-ink-600)" }}
           transition={{ type: "spring", stiffness: 600, damping: 30 }}
           aria-label={key === "del" ? "Delete" : key === "." ? "Decimal point" : key}
           className="flex min-h-14 items-center justify-center rounded-2xl bg-void/60 text-2xl font-semibold text-paper"

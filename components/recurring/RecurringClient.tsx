@@ -102,7 +102,7 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
         {cards.length === 0 ? (
           <Card>
             <p className="text-sm text-sky-200">
-              Subscriptions, instalments and bills go here. Say how often each
+              Subscriptions, installments and bills go here. Say how often each
               one lands — weekly and twice a month included — and it will show
               up as due when the cutoff it comes out of comes around.
             </p>

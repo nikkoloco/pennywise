@@ -1,37 +1,48 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorker } from "@/components/pwa/ServiceWorker";
+import { iconPath, THEMES } from "@/lib/theme";
+import { currentTheme } from "@/lib/theme-cookie";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Pennywise",
-  description: "Tap-first spending log.",
-  manifest: "/manifest.webmanifest",
-  icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png",
-  },
-  appleWebApp: {
-    capable: true,
+/**
+ * Icons follow the chosen look. iOS copies the apple-touch-icon at the moment
+ * of Add to Home Screen, so the installed icon matches the look on that day.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const theme = await currentTheme();
+  return {
     title: "Pennywise",
-    statusBarStyle: "black-translucent",
-  },
-};
+    description: "Tap-first spending log.",
+    manifest: "/manifest.webmanifest",
+    icons: {
+      icon: [
+        { url: iconPath(theme, "svg"), type: "image/svg+xml" },
+        { url: iconPath(theme, 192), sizes: "192x192", type: "image/png" },
+      ],
+      apple: iconPath(theme, 180),
+    },
+    appleWebApp: {
+      capable: true,
+      title: "Pennywise",
+      statusBarStyle: "black-translucent",
+    },
+  };
+}
 
-export const viewport: Viewport = {
-  themeColor: "#060b1c",
-  /** Installed to the Home Screen this behaves like a native app, so no zoom. */
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  viewportFit: "cover",
-};
+export async function generateViewport(): Promise<Viewport> {
+  return {
+    themeColor: THEMES[await currentTheme()].chrome,
+    /** Installed to the Home Screen this behaves like a native app, so no zoom. */
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    viewportFit: "cover",
+  };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" data-theme={await currentTheme()}>
       <body className="min-h-full flex flex-col">
         {children}
         <ServiceWorker />

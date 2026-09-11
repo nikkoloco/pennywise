@@ -14,7 +14,7 @@
  * poisoned one from browsers already carrying it — the only lever that reaches
  * them, since anything shipped in the app bundle would itself be served stale.
  */
-const CACHE = "pennywise-v2";
+const CACHE = "pennywise-v3";
 const OFFLINE_FALLBACK = "/";
 
 self.addEventListener("install", () => {
@@ -53,7 +53,8 @@ async function cacheFirst(request) {
   return response;
 }
 
-const STATIC = /^\/(_next\/static|icon|apple-touch-icon|manifest)/;
+// The manifest is left out: it follows the chosen look, so it must never be served stale.
+const STATIC = /^\/(_next\/static|icons)/;
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;

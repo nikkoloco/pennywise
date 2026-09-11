@@ -1,19 +1,24 @@
 import type { MetadataRoute } from "next";
+import { iconPath, THEMES } from "@/lib/theme";
+import { currentTheme } from "@/lib/theme-cookie";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const theme = await currentTheme();
+  const chrome = THEMES[theme].chrome;
+
   return {
     name: "Pennywise",
     short_name: "Pennywise",
     description: "Tap-first spending log.",
     start_url: "/",
     display: "standalone",
-    background_color: "#060b1c",
-    theme_color: "#060b1c",
+    background_color: chrome,
+    theme_color: chrome,
     orientation: "portrait",
     icons: [
-      { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
-      { src: "/icon.svg", sizes: "any", type: "image/svg+xml" },
+      { src: iconPath(theme, 192), sizes: "192x192", type: "image/png" },
+      { src: iconPath(theme, 512), sizes: "512x512", type: "image/png" },
+      { src: iconPath(theme, "svg"), sizes: "any", type: "image/svg+xml" },
     ],
   };
 }

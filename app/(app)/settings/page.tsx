@@ -2,10 +2,12 @@ import Link from "next/link";
 import { AccountCard } from "@/components/settings/AccountCard";
 import { CategoryManager } from "@/components/settings/CategoryManager";
 import { PayScheduleCard } from "@/components/settings/PayScheduleCard";
+import { ThemePicker } from "@/components/settings/ThemePicker";
 import { ExportButtons } from "@/components/settings/ExportButtons";
 import { Card, SectionLabel } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getAccount, getCategories, getPaySchedule } from "@/db/queries";
+import { currentTheme } from "@/lib/theme-cookie";
 import { currentUserId } from "@/lib/user";
 
 const SETTINGS = [
@@ -18,10 +20,11 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const userId = await currentUserId();
-  const [account, categories, schedule] = await Promise.all([
+  const [account, categories, schedule, theme] = await Promise.all([
     getAccount(userId),
     getCategories(userId),
     getPaySchedule(userId),
+    currentTheme(),
   ]);
 
   return (
@@ -42,6 +45,15 @@ export default async function SettingsPage() {
             ))}
           </ul>
         </Card>
+      </section>
+
+      <section className="px-6">
+        <SectionLabel>Look</SectionLabel>
+        <p className="mt-2 mb-3 text-sm text-sky-300">
+          Colours for this phone. The Home Screen icon takes the look that is
+          on when the app is added, so pick first, then install.
+        </p>
+        <ThemePicker initial={theme} />
       </section>
 
       <section className="px-6">

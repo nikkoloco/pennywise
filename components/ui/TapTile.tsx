@@ -32,7 +32,7 @@ export function TapTile({
     <motion.button
       type="button"
       onClick={onPress}
-      whileTap={{ scale: 0.94, backgroundColor: "#17275e" }}
+      whileTap={{ scale: 0.94, backgroundColor: "var(--color-ink-600)" }}
       transition={{ type: "spring", stiffness: 500, damping: 28 }}
       className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-card p-1.5 ${
         addTile

@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#101B45"/>
-      <stop offset="1" stop-color="#060B1C"/>
+      <stop offset="0" stop-color="#17372a"/>
+      <stop offset="1" stop-color="#07130d"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#ground)"/>
   <!-- Glyph is drawn at full size, then scaled about the canvas centre for icon padding. -->
   <g transform="translate(256 256) scale(0.9) translate(-256 -256)"
-     fill="none" stroke="#FFC81E" stroke-linecap="butt">
+     fill="none" stroke="#ffffff" stroke-linecap="butt">
     <!-- P: stem, then the bowl arcing off the stem top -->
     <path d="M193 120 V 392" stroke-width="46"/>
     <path d="M193 120 H 275 A 84 84 0 0 1 275 288 H 193" stroke-width="46"/>

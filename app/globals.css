@@ -3,38 +3,44 @@
 /**
  * Pennywise palette.
  *
- * Ground is deep navy, structure is light blue, and yellow is reserved almost
- * entirely for money and primary actions so the eye lands on the number first.
- * Umber is reserved for future events, which keeps "money spent" and "money
- * planned" visually separate everywhere in the app.
+ * The tokens name roles, not colours. Ground is what the page sits on, sky is
+ * structure and text on it, gold is reserved almost entirely for money and
+ * primary actions so the eye lands on the number first, and umber is reserved
+ * for future events, which keeps "money spent" and "money planned" visually
+ * separate everywhere in the app.
+ *
+ * Each role resolves through a variable, and `data-theme` on <html> swaps the
+ * whole set. The default look is deep navy; the others are further down.
  */
-@theme {
-  /* Ground - dark blues */
-  --color-ink-900: #060b1c;
-  --color-ink-800: #0a1330;
-  --color-ink-700: #101b45;
-  --color-ink-600: #17275e;
-  --color-ink-500: #21377f;
+@theme inline {
+  /* Ground - deepest to most raised */
+  --color-ink-900: var(--ink-900);
+  --color-ink-800: var(--ink-800);
+  --color-ink-700: var(--ink-700);
+  --color-ink-600: var(--ink-600);
+  --color-ink-500: var(--ink-500);
 
-  /* Structure - light blues */
-  --color-sky-400: #4c8be8;
-  --color-sky-300: #7fb2f3;
-  --color-sky-200: #afd2fa;
-  --color-sky-100: #dcebff;
+  /* Structure - strongest text to accent */
+  --color-sky-100: var(--sky-100);
+  --color-sky-200: var(--sky-200);
+  --color-sky-300: var(--sky-300);
+  --color-sky-400: var(--sky-400);
 
   /* Accent - money, CTAs, today */
-  --color-gold-500: #ffc81e;
-  --color-gold-400: #ffd84d;
-  --color-gold-300: #ffe894;
+  --color-gold-500: var(--gold-500);
+  --color-gold-400: var(--gold-400);
+  --color-gold-300: var(--gold-300);
 
   /* Warm neutral - future events */
-  --color-umber-700: #3a2618;
-  --color-umber-500: #5c3b22;
-  --color-umber-300: #a97a52;
+  --color-umber-700: var(--umber-700);
+  --color-umber-500: var(--umber-500);
+  --color-umber-300: var(--umber-300);
 
-  /* Absolutes */
-  --color-void: #000000;
-  --color-paper: #ffffff;
+  /* Absolutes - the recessed surface and the strongest foreground */
+  --color-void: var(--void);
+  --color-paper: var(--paper);
+  /* Behind a sheet. Always dark, whatever the look. */
+  --color-scrim: var(--scrim);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 
@@ -44,7 +50,7 @@
 
 /**
  * Category swatch ramp. Fixed order spanning sky to gold to umber so charts stay
- * on-palette regardless of which categories exist.
+ * on-palette regardless of which categories exist. Shared by every look.
  *
  * `static` is required: these are referenced as var(--color-swatch-N) from chart
  * fills rather than from class names, so Tailwind cannot see the usage and would
@@ -67,8 +73,144 @@
   --color-swatch-14: #2a8f8f;
 }
 
+/* Default: deep navy, light blue, gold. */
 :root {
   color-scheme: dark;
+
+  --ink-900: #060b1c;
+  --ink-800: #0a1330;
+  --ink-700: #101b45;
+  --ink-600: #17275e;
+  --ink-500: #21377f;
+
+  --sky-100: #dcebff;
+  --sky-200: #afd2fa;
+  --sky-300: #7fb2f3;
+  --sky-400: #4c8be8;
+
+  --gold-500: #ffc81e;
+  --gold-400: #ffd84d;
+  --gold-300: #ffe894;
+
+  --umber-700: #3a2618;
+  --umber-500: #5c3b22;
+  --umber-300: #a97a52;
+
+  --void: #000000;
+  --paper: #ffffff;
+  --scrim: rgb(0 0 0 / 0.7);
+}
+
+/* Light: white and pale blue-grey, navy text, amber money. */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --ink-900: #eef2f9;
+  --ink-800: #ffffff;
+  --ink-700: #ffffff;
+  --ink-600: #e3e9f4;
+  --ink-500: #cfd9ea;
+
+  --sky-100: #0b1533;
+  --sky-200: #1e2f63;
+  --sky-300: #4a5b8a;
+  --sky-400: #2f6fd6;
+
+  --gold-500: #b46a00;
+  --gold-400: #9d5c00;
+  --gold-300: #8a5000;
+
+  --umber-700: #fbf1e6;
+  --umber-500: #e6cfb4;
+  --umber-300: #7a4b22;
+
+  --void: #dfe6f2;
+  --paper: #060b1c;
+  --scrim: rgb(6 11 28 / 0.55);
+}
+
+/* Dark: true black and graphite, neutral text, gold money. */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ink-900: #000000;
+  --ink-800: #0e0e10;
+  --ink-700: #161618;
+  --ink-600: #232326;
+  --ink-500: #2e2e33;
+
+  --sky-100: #f2f2f5;
+  --sky-200: #c9c9d1;
+  --sky-300: #8e8e99;
+  --sky-400: #5b8cff;
+
+  --gold-500: #ffc81e;
+  --gold-400: #ffd84d;
+  --gold-300: #ffe894;
+
+  --umber-700: #2a2118;
+  --umber-500: #4a3a2a;
+  --umber-300: #b08a64;
+
+  --void: #000000;
+  --paper: #ffffff;
+  --scrim: rgb(0 0 0 / 0.75);
+}
+
+/* Pink: blush ground, plum text, deep pink money, lavender for plans. */
+[data-theme="pink"] {
+  color-scheme: light;
+
+  --ink-900: #fff0f5;
+  --ink-800: #ffffff;
+  --ink-700: #ffffff;
+  --ink-600: #ffe1ec;
+  --ink-500: #f7c4d8;
+
+  --sky-100: #2a0518;
+  --sky-200: #5c1a45;
+  --sky-300: #8f4d76;
+  --sky-400: #e0407f;
+
+  --gold-500: #c2185b;
+  --gold-400: #b0124f;
+  --gold-300: #9c0e45;
+
+  --umber-700: #f5eefb;
+  --umber-500: #dcc8f0;
+  --umber-300: #6b3fa0;
+
+  --void: #ffd6e5;
+  --paper: #2a0518;
+  --scrim: rgb(42 5 24 / 0.55);
+}
+
+/* Forest: deep green ground, white text and money, bright green accent. */
+[data-theme="forest"] {
+  color-scheme: dark;
+
+  --ink-900: #07130d;
+  --ink-800: #0b1f14;
+  --ink-700: #10291b;
+  --ink-600: #17372a;
+  --ink-500: #1f4a36;
+
+  --sky-100: #ffffff;
+  --sky-200: #d5e8dc;
+  --sky-300: #9bbfa8;
+  --sky-400: #3ec27a;
+
+  --gold-500: #ffffff;
+  --gold-400: #eaf5ee;
+  --gold-300: #d5e8dc;
+
+  --umber-700: #2b2a1a;
+  --umber-500: #4d4a2e;
+  --umber-300: #c9c08a;
+
+  --void: #000000;
+  --paper: #ffffff;
+  --scrim: rgb(0 0 0 / 0.7);
 }
 
 html,

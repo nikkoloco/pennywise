@@ -81,7 +81,7 @@ export function PinPad({
               key={i}
               type="button"
               onClick={() => press(key)}
-              whileTap={{ scale: 0.92, backgroundColor: "#17275e" }}
+              whileTap={{ scale: 0.92, backgroundColor: "var(--color-ink-600)" }}
               transition={{ type: "spring", stiffness: 600, damping: 30 }}
               aria-label={key === "del" ? "Delete" : key}
               className="flex min-h-16 items-center justify-center rounded-2xl bg-void/60 text-2xl font-semibold text-paper"
