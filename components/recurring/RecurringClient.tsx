@@ -16,7 +16,8 @@ import {
 import { Amount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { cutoffLabel } from "@/lib/payPeriod";
+import { usePaySchedule } from "@/components/PayScheduleProvider";
+import { cutoffCount, cutoffLabel } from "@/lib/payPeriod";
 import { scheduleLabel } from "@/lib/recurring";
 
 export type RecurringCard = {
@@ -28,7 +29,7 @@ export type RecurringCard = {
   every: number;
   unit: "week" | "month";
   runsForMonths: number | null;
-  /** Null lands in both cutoffs. */
+  /** Null lands in every cutoff. */
   cutoff: number | null;
   startMonth: string;
   payOnDay: number | null;
@@ -46,6 +47,7 @@ type Props = {
 };
 
 export function RecurringClient({ cards, cutoff, startMonth, categories }: Props) {
+  const schedule = usePaySchedule();
   const [, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<RecurringDraft | null>(null);
@@ -67,7 +69,7 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
       every: card.every,
       unit: card.unit,
       runsForMonths: card.runsForMonths,
-      cutoff: card.cutoff === null ? null : card.cutoff === 2 ? 2 : 1,
+      cutoff: card.cutoff,
       startMonth: card.startMonth.slice(0, 7),
       payOnDay: card.payOnDay,
     });
@@ -125,8 +127,10 @@ export function RecurringClient({ cards, cutoff, startMonth, categories }: Props
                     </p>
                     <p className="text-xs text-sky-300">
                       {scheduleLabel(card)}
-                      {/* A schedule that spans both halves has no cutoff to name. */}
-                      {card.cutoff !== null && ` · ${cutoffLabel(card.cutoff)}`}
+                      {/* A schedule landing in every cutoff has none to name. */}
+                      {card.cutoff !== null &&
+                        cutoffCount(schedule) > 1 &&
+                        ` · ${cutoffLabel(card.cutoff, schedule)}`}
                     </p>
                     {card.payOnDay !== null && (
                       <p className="text-xs text-sky-300">

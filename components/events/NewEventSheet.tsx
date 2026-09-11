@@ -16,7 +16,7 @@ export type PlanInput = {
   eventMonth: string;
   budgetMinor: number;
   isRecurringAnnual: boolean;
-  cutoff: 1 | 2;
+  cutoff: number;
 };
 
 export type PlanDraft = PlanInput & { id: string };
@@ -53,7 +53,7 @@ function PlanForm({ initial, onSubmit, onClose }: Omit<Props, "open">) {
   const [eventMonth, setEventMonth] = useState(initial?.eventMonth ?? "");
   const [draft, setDraft] = useState(initial ? minorToDraft(initial.budgetMinor) : "");
   const [recurring, setRecurring] = useState(initial?.isRecurringAnnual ?? false);
-  const [cutoff, setCutoff] = useState<1 | 2>(initial?.cutoff ?? 1);
+  const [cutoff, setCutoff] = useState(initial?.cutoff ?? 1);
 
   const budget = draftToMinor(draft);
   const ready = name.trim() && eventMonth && budget > 0;

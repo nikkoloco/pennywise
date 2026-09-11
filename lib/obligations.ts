@@ -1,3 +1,4 @@
+import type { PaySchedule } from "./payPeriod";
 import { monthCount, type RecurringRow } from "./recurring";
 
 /**
@@ -15,9 +16,10 @@ export function monthObligations(
   recurring: RecurringRow[],
   planned: PlannedRow[],
   month: string,
+  schedule: PaySchedule,
 ) {
   const recurringMinor = recurring.reduce(
-    (total, entry) => total + entry.amountMinor * monthCount(entry, month),
+    (total, entry) => total + entry.amountMinor * monthCount(entry, month, schedule),
     0,
   );
 

@@ -1,4 +1,4 @@
-import { payPeriodOfDay } from "./payPeriod";
+import { type PaySchedule, payPeriodOfDay } from "./payPeriod";
 import { bucketKeyOf, bucketsFor, type Period } from "./period";
 
 export type InsightEntry = {
@@ -51,13 +51,18 @@ export function byCategory(entries: InsightEntry[]) {
   return [...map.values()].sort((a, b) => b.total - a.total);
 }
 
-export function bucketTotals(entries: InsightEntry[], period: Period, offset: number) {
+export function bucketTotals(
+  entries: InsightEntry[],
+  period: Period,
+  offset: number,
+  schedule: PaySchedule,
+) {
   const totals = new Map<string, number>();
   for (const e of entries) {
     const key = bucketKeyOf(e.day, period);
     totals.set(key, (totals.get(key) ?? 0) + e.amountMinor);
   }
-  return bucketsFor(period, offset).map((b) => ({
+  return bucketsFor(period, offset, schedule).map((b) => ({
     label: b.label,
     total: totals.get(b.key) ?? 0,
   }));
@@ -103,15 +108,15 @@ export function habits(entries: InsightEntry[], days: string[]) {
 }
 
 /**
- * The period split by pay packet, since money arrives twice a month and is
- * spent against whichever one is current. A calendar month straddles three of
- * these: its own two, plus the tail that belongs to next month's first.
+ * The period split by pay packet, since money arrives by cutoff and is spent
+ * against whichever one is current. A calendar month straddles more of these
+ * than it has: its own, plus the tail that belongs to next month's first.
  */
-export function byCutoff(entries: InsightEntry[]) {
+export function byCutoff(entries: InsightEntry[], schedule: PaySchedule) {
   const map = new Map<string, { key: string; label: string; cutoff: number; total: number }>();
 
   for (const entry of entries) {
-    const { key, label, cutoff } = payPeriodOfDay(entry.day);
+    const { key, label, cutoff } = payPeriodOfDay(entry.day, schedule);
     const row = map.get(key) ?? { key, label, cutoff, total: 0 };
     row.total += entry.amountMinor;
     map.set(key, row);

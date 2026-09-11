@@ -3,7 +3,7 @@ import Link from "next/link";
 import { HabitsStrip } from "@/components/insights/HabitsStrip";
 import { InsightsClient } from "@/components/insights/InsightsClient";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getExpensesIn, getTotalIn } from "@/db/queries";
+import { getExpensesIn, getPaySchedule, getTotalIn } from "@/db/queries";
 import { habits } from "@/lib/insights";
 import {
   PERIODS,
@@ -22,8 +22,9 @@ export default async function InsightsPage({ searchParams }: PageProps<"/insight
   const period: Period = PERIODS.includes(p as Period) ? (p as Period) : "month";
   const offset = Number.isInteger(Number(o)) ? Number(o) : 0;
 
-  const range = periodRange(period, offset);
   const userId = await currentUserId();
+  const schedule = await getPaySchedule(userId);
+  const range = periodRange(period, offset, schedule);
 
   // Averages, streaks and comparisons only count days that have actually happened.
   const days = eachDayOfInterval({
@@ -35,7 +36,7 @@ export default async function InsightsPage({ searchParams }: PageProps<"/insight
     getExpensesIn(userId, range),
     getTotalIn(
       userId,
-      previousRange(period, offset, offset === 0 ? days.length : undefined),
+      previousRange(period, offset, schedule, offset === 0 ? days.length : undefined),
     ),
   ]);
 
@@ -84,7 +85,7 @@ export default async function InsightsPage({ searchParams }: PageProps<"/insight
       <section className="flex items-center justify-between px-6">
         <PeriodLink period={period} offset={offset - 1} label="Earlier" back />
         <p className="text-sm font-semibold text-paper">
-          {periodLabel(period, offset)}
+          {periodLabel(period, offset, schedule)}
         </p>
         <PeriodLink period={period} offset={offset + 1} label="Later" disabled={offset >= 0} />
       </section>

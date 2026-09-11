@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { countdownLabel } from "@/lib/events";
 import { formatMinor } from "@/lib/money";
-import { cutoffLabel } from "@/lib/payPeriod";
+import { usePaySchedule } from "@/components/PayScheduleProvider";
+import { cutoffCount, cutoffLabel } from "@/lib/payPeriod";
 import { monthLabel } from "@/lib/time";
 
 export type EventCard = {
@@ -30,6 +31,7 @@ export type EventCard = {
 };
 
 export function EventsClient({ events }: { events: EventCard[] }) {
+  const schedule = usePaySchedule();
   const [, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<PlanDraft | null>(null);
@@ -56,7 +58,7 @@ export function EventsClient({ events }: { events: EventCard[] }) {
       eventMonth: card.occursOn,
       budgetMinor: card.budgetMinor,
       isRecurringAnnual: card.isRecurringAnnual,
-      cutoff: card.cutoff === 2 ? 2 : 1,
+      cutoff: card.cutoff,
     });
   }
 
@@ -96,7 +98,8 @@ export function EventsClient({ events }: { events: EventCard[] }) {
                       {event.name}
                     </p>
                     <p className="text-xs text-umber-300">
-                      {monthLabel(event.occursOn)} · {cutoffLabel(event.cutoff)}
+                      {monthLabel(event.occursOn)}
+                      {cutoffCount(schedule) > 1 && ` · ${cutoffLabel(event.cutoff, schedule)}`}
                     </p>
                     <p className="text-xs text-umber-300">
                       {countdownLabel(event.monthsAway)}

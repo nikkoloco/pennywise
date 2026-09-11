@@ -1,17 +1,26 @@
 "use client";
 
-import { cutoffLabel } from "@/lib/payPeriod";
+import { usePaySchedule } from "@/components/PayScheduleProvider";
+import { cutoffCount, cutoffLabel } from "@/lib/payPeriod";
 
 type Props = {
-  value: 1 | 2;
-  onChange: (cutoff: 1 | 2) => void;
+  value: number;
+  onChange: (cutoff: number) => void;
   label?: string;
   /** Umber for future money, matching whichever sheet this sits in. */
   tone?: "ink" | "umber";
 };
 
-/** Which half of the month's pay covers something. Always one or the other. */
+/**
+ * Which of the month's cutoffs covers something. Always one of them, and
+ * nothing to show when the account is paid once a month, since a choice of
+ * one is not a choice.
+ */
 export function CutoffToggle({ value, onChange, label = "Paid on", tone = "ink" }: Props) {
+  const schedule = usePaySchedule();
+  const count = cutoffCount(schedule);
+  if (count === 1) return null;
+
   const unselected = tone === "umber" ? "bg-umber-700 text-gold-300" : "bg-ink-700 text-sky-200";
   const selected =
     tone === "umber" ? "bg-gold-500 font-semibold text-ink-900" : "bg-sky-400 font-semibold text-ink-900";
@@ -25,17 +34,17 @@ export function CutoffToggle({ value, onChange, label = "Paid on", tone = "ink" 
       >
         {label}
       </p>
-      <div className="flex gap-2">
-        {([1, 2] as const).map((cutoff) => (
+      <div className="grid grid-cols-2 gap-2">
+        {Array.from({ length: count }, (_, i) => i + 1).map((cutoff) => (
           <button
             key={cutoff}
             type="button"
             onClick={() => onChange(cutoff)}
-            className={`min-h-11 flex-1 rounded-2xl px-3 text-sm ${
+            className={`min-h-11 rounded-2xl px-3 text-sm ${
               cutoff === value ? selected : unselected
             }`}
           >
-            {cutoffLabel(cutoff)}
+            {cutoffLabel(cutoff, schedule)}
           </button>
         ))}
       </div>

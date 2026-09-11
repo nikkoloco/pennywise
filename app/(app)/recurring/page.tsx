@@ -1,6 +1,6 @@
 import { RecurringClient } from "@/components/recurring/RecurringClient";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getCategories, getRecurring, getRecurringPaid } from "@/db/queries";
+import { getCategories, getPaySchedule, getRecurring, getRecurringPaid } from "@/db/queries";
 import {
   cutoffLabel,
   cutoffNumber,
@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
 
 export default async function RecurringPage() {
   const userId = await currentUserId();
-  const pay = payPeriodRange();
+  const schedule = await getPaySchedule(userId);
+  const pay = payPeriodRange(schedule);
 
   const [entries, paid, categories] = await Promise.all([
     getRecurring(userId),
@@ -23,14 +24,14 @@ export default async function RecurringPage() {
     getCategories(userId),
   ]);
 
-  const cutoff = cutoffNumber(pay);
-  const cards = buildRecurringCards(entries, paid, payPeriodMonth(pay), cutoff);
+  const cutoff = cutoffNumber(pay, schedule);
+  const cards = buildRecurringCards(entries, paid, payPeriodMonth(pay), cutoff, schedule);
 
   return (
     <main className="flex flex-1 flex-col gap-4 pb-6">
       <PageHeader
         title="Recurring"
-        subtitle={`${cutoffLabel(cutoff)} · ${payPeriodLabel(pay)}`}
+        subtitle={`${cutoffLabel(cutoff, schedule)} · ${payPeriodLabel(pay)}`}
       />
       <RecurringClient
         cards={cards}

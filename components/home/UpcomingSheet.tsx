@@ -13,7 +13,7 @@ export type UpcomingInput = {
   name: string;
   emoji: string;
   approxMinor: number;
-  cutoff: 1 | 2;
+  cutoff: number;
 };
 
 export type UpcomingItem = UpcomingInput & { id: string };
@@ -49,7 +49,7 @@ function UpcomingForm({ initial, onSubmit, onClose }: Omit<Props, "open">) {
   const [name, setName] = useState(initial?.name ?? "");
   const [emoji, setEmoji] = useState(initial?.emoji ?? DEFAULT_EMOJI);
   const [draft, setDraft] = useState(initial ? minorToDraft(initial.approxMinor) : "");
-  const [cutoff, setCutoff] = useState<1 | 2>(initial?.cutoff ?? 1);
+  const [cutoff, setCutoff] = useState(initial?.cutoff ?? 1);
 
   const approxMinor = draftToMinor(draft);
   const ready = name.trim() && approxMinor > 0;

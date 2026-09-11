@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { AccountCard } from "@/components/settings/AccountCard";
 import { CategoryManager } from "@/components/settings/CategoryManager";
+import { PayScheduleCard } from "@/components/settings/PayScheduleCard";
 import { ExportButtons } from "@/components/settings/ExportButtons";
 import { Card, SectionLabel } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getAccount, getCategories } from "@/db/queries";
+import { getAccount, getCategories, getPaySchedule } from "@/db/queries";
 import { currentUserId } from "@/lib/user";
 
 const SETTINGS = [
@@ -17,7 +18,11 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const userId = await currentUserId();
-  const [account, categories] = await Promise.all([getAccount(userId), getCategories(userId)]);
+  const [account, categories, schedule] = await Promise.all([
+    getAccount(userId),
+    getCategories(userId),
+    getPaySchedule(userId),
+  ]);
 
   return (
     <main className="flex flex-1 flex-col gap-5 pb-6">
@@ -37,6 +42,15 @@ export default async function SettingsPage() {
             ))}
           </ul>
         </Card>
+      </section>
+
+      <section className="px-6">
+        <SectionLabel>Cutoff</SectionLabel>
+        <p className="mt-2 mb-3 text-sm text-sky-300">
+          How often pay lands and on which days. A cutoff is the stretch
+          between paydays, and it is what spending is counted against.
+        </p>
+        <PayScheduleCard initial={schedule} />
       </section>
 
       <section className="px-6">

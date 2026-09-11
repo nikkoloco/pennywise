@@ -5,6 +5,7 @@ import {
   getEvents,
   getEventSpend,
   getExpensesIn,
+  getPaySchedule,
   getRecurring,
   getTotalIn,
   getUpcoming,
@@ -30,7 +31,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   const partialThrough = key === monthKey() ? Number(todayKey.slice(8)) : undefined;
 
   const userId = await currentUserId();
-  const [entries, prevMonthTotal, recurring, events, eventSpend, upcoming] =
+  const [entries, prevMonthTotal, recurring, events, eventSpend, upcoming, schedule] =
     await Promise.all([
       getExpensesIn(userId, monthRangeOf(key)),
       getTotalIn(userId, previousMonthRange(key, partialThrough)),
@@ -38,13 +39,14 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
       getEvents(userId),
       getEventSpend(userId),
       getUpcoming(userId),
+      getPaySchedule(userId),
     ]);
 
   // What the month is committed to regardless of what has been spent in it.
   // Only worth showing from this month on: for a month already gone, the
   // spending below is the answer and a forecast would just argue with it.
   const planned = buildEventCards(events, eventSpend, monthKey(), monthKey);
-  const owed = monthObligations(recurring, planned, key);
+  const owed = monthObligations(recurring, planned, key, schedule);
   const guesses = upcoming.reduce((total, item) => total + item.approxMinor, 0);
 
   return (

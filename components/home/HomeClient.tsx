@@ -34,7 +34,8 @@ import { Card, SectionLabel } from "@/components/ui/Card";
 import { TapTile } from "@/components/ui/TapTile";
 import { Outbox } from "@/components/pwa/Outbox";
 import { countdownLabel } from "@/lib/events";
-import { cutoffLabel } from "@/lib/payPeriod";
+import { usePaySchedule } from "@/components/PayScheduleProvider";
+import { cutoffCount, cutoffLabel, ordinal } from "@/lib/payPeriod";
 import { monthLabel } from "@/lib/time";
 import { formatMinor } from "@/lib/money";
 import { queueExpense } from "@/lib/outbox";
@@ -102,6 +103,7 @@ export function HomeClient({
   plans,
   upcoming,
 }: Props) {
+  const schedule = usePaySchedule();
   const [, startTransition] = useTransition();
   const [keypadFor, setKeypadFor] = useState<string | null>(null);
   const [editingEntry, setEditingEntry] = useState<ExpenseDraft | null>(null);
@@ -277,7 +279,8 @@ export function HomeClient({
                       {plan.name}
                     </p>
                     <p className="text-xs text-umber-300">
-                      {monthLabel(plan.occursOn)} · {cutoffLabel(plan.cutoff)}
+                      {monthLabel(plan.occursOn)}
+                      {cutoffCount(schedule) > 1 && ` · ${cutoffLabel(plan.cutoff, schedule)}`}
                     </p>
                     <p className="text-xs text-umber-300">
                       {countdownLabel(plan.monthsAway)} ·{" "}
@@ -311,7 +314,8 @@ export function HomeClient({
                 <span>{item.emoji}</span>
                 {item.name}
                 <span className="text-xs text-umber-300">
-                  ~{formatMinor(item.approxMinor)} · {item.cutoff === 1 ? "1st" : "2nd"}
+                  ~{formatMinor(item.approxMinor)}
+                  {cutoffCount(schedule) > 1 && ` · ${ordinal(item.cutoff)}`}
                 </span>
               </button>
               <button

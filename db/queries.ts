@@ -1,5 +1,7 @@
 import { and, asc, count, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { cache } from "react";
+import type { PaySchedule } from "@/lib/payPeriod";
 import { db } from "./index";
 import {
   apiTokens,
@@ -22,6 +24,19 @@ export async function getAccount(userId: string) {
     .where(eq(users.id, userId));
   return account;
 }
+
+/**
+ * When pay lands, which every screen that talks about cutoffs needs. Memoised
+ * per request, since the layout provides it to client components while the
+ * page it wraps asks for it again.
+ */
+export const getPaySchedule = cache(async (userId: string): Promise<PaySchedule> => {
+  const [row] = await db
+    .select({ cadence: users.payCadence, paydays: users.paydays })
+    .from(users)
+    .where(eq(users.id, userId));
+  return row;
+});
 
 /** Every category, parents and subgroups alike. Callers decide how to nest. */
 export async function getCategories(userId: string) {

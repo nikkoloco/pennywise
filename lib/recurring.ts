@@ -1,6 +1,6 @@
 import { TZDate } from "@date-fns/tz";
 import { addDays, addMonths, differenceInCalendarDays, startOfDay } from "date-fns";
-import { payPeriodOf } from "./payPeriod";
+import { type PaySchedule, cutoffCount, cutoffsIn, payPeriodOf } from "./payPeriod";
 import { TZ, monthOf, monthRangeOf, monthsUntil } from "./time";
 
 /**
@@ -11,11 +11,11 @@ import { TZ, monthOf, monthRangeOf, monthsUntil } from "./time";
  * rather than in payments, so "every 3 months for a year" is four payments and
  * reads the way it is said out loud.
  *
- * `cutoff` pins a monthly-or-slower payment to one half of the month's pay. A
- * null cutoff means it lands in both, which is how twice a month is stored and
- * the only thing weekly can be: a week is shorter than a pay period, so a
- * weekly payment is owed more than once inside each of them. That is why due
- * is a count everywhere here and never a flag.
+ * `cutoff` pins a monthly-or-slower payment to one of the month's pay
+ * periods. A null cutoff means it lands in every one, which is how twice a
+ * month is stored and the only thing weekly can be: a week is no longer than
+ * a pay period, so a weekly payment is owed at least once inside each of
+ * them. That is why due is a count everywhere here and never a flag.
  *
  * Nothing in this file writes anything. Due means "this is owed now", never
  * "this has been paid", because only an expense you actually logged says that.
@@ -29,7 +29,7 @@ export type RecurringRow = {
   every: number;
   unit: "week" | "month";
   runsForMonths: number | null;
-  /** Null lands in both cutoffs. */
+  /** Null lands in every cutoff. */
   cutoff: number | null;
   startMonth: string;
   /** The day of the month it is taken, when that is fixed. */
@@ -43,8 +43,9 @@ type Schedule = Pick<RecurringRow, "every" | "unit" | "cutoff">;
 
 /**
  * The rhythms the interface offers, each a complete answer to "how often".
- * Weekly and twice a month land in both cutoffs by their nature, so they never
- * ask which one; the rest are pinned to the cutoff you choose.
+ * Weekly and twice a month land in every cutoff by their nature, so they never
+ * ask which one; the rest are pinned to the cutoff you choose. Twice a month
+ * is only that when pay is: `offeredCadences` leaves it out otherwise.
  */
 export const CADENCES = [
   { key: "weekly", label: "Weekly", phrase: "every week", every: 1, unit: "week" },
@@ -76,9 +77,14 @@ export const CADENCES = [
 export type Cadence = (typeof CADENCES)[number];
 export type CadenceKey = Cadence["key"];
 
-/** Whether a cadence spans both cutoffs on its own, so no cutoff is chosen. */
-export function spansBothCutoffs(key: CadenceKey) {
+/** Whether a cadence lands in every cutoff on its own, so no cutoff is chosen. */
+export function landsEveryCutoff(key: CadenceKey) {
   return key === "weekly" || key === "twiceAMonth";
+}
+
+/** The rhythms worth offering under this pay schedule. */
+export function offeredCadences(schedule: PaySchedule) {
+  return CADENCES.filter((c) => c.key !== "twiceAMonth" || cutoffCount(schedule) === 2);
 }
 
 /** The rhythm a key names, falling back to the one most payments have. */
@@ -92,7 +98,7 @@ export function cadenceOf(entry: Schedule): Cadence {
     (c) =>
       c.unit === entry.unit &&
       c.every === entry.every &&
-      spansBothCutoffs(c.key) === (entry.cutoff === null),
+      landsEveryCutoff(c.key) === (entry.cutoff === null),
   );
   return match ?? cadenceByKey("monthly");
 }
@@ -144,23 +150,30 @@ function landsInMonth(entry: RecurringRow, month: string) {
 
 /**
  * How many payments this pay period owes. One for a monthly-or-slower payment
- * whose cutoff this is, two or three for a weekly one, none when the schedule
- * has nothing to do with the period.
+ * whose cutoff this is, as many as the weeks it spans for a weekly one, none
+ * when the schedule has nothing to do with the period.
  */
-export function dueCount(entry: RecurringRow, month: string, cutoff: number) {
-  if (entry.unit === "week") return weeklyCount(entry, payPeriodOf(month, cutoff));
+export function dueCount(
+  entry: RecurringRow,
+  month: string,
+  cutoff: number,
+  schedule: PaySchedule,
+) {
+  if (entry.unit === "week") {
+    return weeklyCount(entry, payPeriodOf(month, cutoff, schedule));
+  }
   if (entry.cutoff !== null && entry.cutoff !== cutoff) return 0;
   return landsInMonth(entry, month) ? 1 : 0;
 }
 
 /**
- * How many payments the calendar month owes. Twice a month counts twice here,
- * because both cutoffs of the month ask for it.
+ * How many payments the calendar month owes. A payment landing in every
+ * cutoff counts once for each cutoff the month has.
  */
-export function monthCount(entry: RecurringRow, month: string) {
+export function monthCount(entry: RecurringRow, month: string, schedule: PaySchedule) {
   if (entry.unit === "week") return weeklyCount(entry, monthRangeOf(month));
   if (!landsInMonth(entry, month)) return 0;
-  return entry.cutoff === null ? 2 : 1;
+  return entry.cutoff === null ? cutoffsIn(month, schedule) : 1;
 }
 
 /**
@@ -176,11 +189,12 @@ export function buildRecurringCards(
   paidCounts: Map<string, number>,
   month: string,
   cutoff: number,
+  schedule: PaySchedule,
 ) {
   return entries
     .map((entry) => ({
       ...entry,
-      dueCount: dueCount(entry, month, cutoff),
+      dueCount: dueCount(entry, month, cutoff, schedule),
       paidCount: paidCounts.get(entry.id) ?? 0,
     }))
     .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));

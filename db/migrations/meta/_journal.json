@@ -99,6 +99,13 @@
       "when": 1789047936155,
       "tag": "0013_add_password",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789101949265,
+      "tag": "0014_add_pay_schedule",
+      "breakpoints": true
     }
   ]
 }

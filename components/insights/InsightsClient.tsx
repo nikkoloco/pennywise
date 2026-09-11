@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePaySchedule } from "@/components/PayScheduleProvider";
 import { CategoryDonut } from "@/components/insights/CategoryDonut";
 import { CutoffSplit } from "@/components/insights/CutoffSplit";
 import { PeriodBars } from "@/components/insights/PeriodBars";
@@ -18,13 +19,14 @@ type Props = {
 };
 
 export function InsightsClient({ entries, period, offset, habits }: Props) {
+  const schedule = usePaySchedule();
   const [selected, setSelected] = useState<string | null>(null);
 
   const slices = byCategory(entries);
   const total = entries.reduce((n, e) => n + e.amountMinor, 0);
   const listed = selected ? entries.filter((e) => e.groupName === selected) : entries;
   // Bars follow the selection so donut, chart and list all describe the same slice.
-  const bars = bucketTotals(listed, period, offset);
+  const bars = bucketTotals(listed, period, offset, schedule);
 
   if (entries.length === 0) {
     return (
@@ -83,7 +85,7 @@ export function InsightsClient({ entries, period, offset, habits }: Props) {
 
       {/* Follows the selection like the bars do, so donut, chart, split and
           list all describe the same slice of spending. */}
-      <CutoffSplit rows={byCutoff(listed)} />
+      <CutoffSplit rows={byCutoff(listed, schedule)} />
 
       {habits}
 

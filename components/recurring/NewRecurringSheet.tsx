@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePaySchedule } from "@/components/PayScheduleProvider";
 import { Keypad } from "@/components/keypad/Keypad";
 import { DraftAmount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
@@ -8,11 +9,12 @@ import { CutoffToggle } from "@/components/ui/CutoffToggle";
 import { DEFAULT_EMOJI, EmojiPicker } from "@/components/ui/EmojiPicker";
 import { Sheet } from "@/components/ui/Sheet";
 import { draftToMinor, minorToDraft } from "@/lib/money";
+import { cutoffCount } from "@/lib/payPeriod";
 import {
-  CADENCES,
   cadenceByKey,
   cadenceOf,
-  spansBothCutoffs,
+  landsEveryCutoff,
+  offeredCadences,
   type CadenceKey,
 } from "@/lib/recurring";
 
@@ -26,8 +28,8 @@ export type RecurringInput = {
   every: number;
   unit: "week" | "month";
   runsForMonths: number | null;
-  /** Null lands in both cutoffs, which is what twice a month and weekly do. */
-  cutoff: 1 | 2 | null;
+  /** Null lands in every cutoff, which is what twice a month and weekly do. */
+  cutoff: number | null;
   startMonth: string;
   payOnDay: number | null;
 };
@@ -69,6 +71,7 @@ function RecurringForm({
   onSubmit,
   onClose,
 }: Omit<Props, "open">) {
+  const paySchedule = usePaySchedule();
   const [name, setName] = useState(initial?.name ?? "");
   const [emoji, setEmoji] = useState(initial?.emoji ?? DEFAULT_EMOJI);
   const [categoryId, setCategoryId] = useState<string | null>(initial?.categoryId ?? null);
@@ -77,15 +80,15 @@ function RecurringForm({
     initial ? cadenceOf(initial).key : "monthly",
   );
   const [runsFor, setRunsFor] = useState(numberField(initial?.runsForMonths));
-  const [payOn, setPayOn] = useState<1 | 2>(initial?.cutoff ?? (cutoff === 1 ? 1 : 2));
+  const [payOn, setPayOn] = useState(initial?.cutoff ?? cutoff);
   const [from, setFrom] = useState(initial?.startMonth ?? startMonth);
   const [fixedDay, setFixedDay] = useState(numberField(initial?.payOnDay));
 
   const amountMinor = draftToMinor(draft);
   const ready = name.trim() && categoryId && amountMinor > 0 && from;
-  // Weekly and twice a month land in both halves of the month's pay by their
-  // nature, so there is no cutoff to pick and no single day it is taken on.
-  const bothCutoffs = spansBothCutoffs(cadence);
+  // Weekly and twice a month land in every cutoff by their nature, so there
+  // is no cutoff to pick and no single day it is taken on.
+  const everyCutoff = landsEveryCutoff(cadence);
   const schedule = cadenceByKey(cadence);
 
   return (
@@ -125,7 +128,7 @@ function RecurringForm({
       <div>
         <p className="mb-2 text-xs tracking-[0.15em] text-sky-300 uppercase">How often</p>
         <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
-          {CADENCES.map((c) => (
+          {offeredCadences(paySchedule).map((c) => (
             <button
               key={c.key}
               type="button"
@@ -175,15 +178,17 @@ function RecurringForm({
         />
       </div>
 
-      {bothCutoffs ? (
-        <p className="text-xs text-sky-400">
-          Comes out of both cutoffs, so there is no half of the month to pick.
-        </p>
+      {everyCutoff ? (
+        cutoffCount(paySchedule) > 1 && (
+          <p className="text-xs text-sky-400">
+            Comes out of every cutoff, so there is none to pick.
+          </p>
+        )
       ) : (
         <CutoffToggle value={payOn} onChange={setPayOn} />
       )}
 
-      {!bothCutoffs && (
+      {!everyCutoff && (
         <div>
           <p className="mb-1 text-xs tracking-[0.15em] text-sky-300 uppercase">
             On a fixed day
@@ -222,9 +227,9 @@ function RecurringForm({
             every: schedule.every,
             unit: schedule.unit,
             runsForMonths: runsFor ? Number(runsFor) : null,
-            cutoff: bothCutoffs ? null : payOn,
+            cutoff: everyCutoff ? null : payOn,
             startMonth: from,
-            payOnDay: bothCutoffs || !fixedDay ? null : clampDay(Number(fixedDay)),
+            payOnDay: everyCutoff || !fixedDay ? null : clampDay(Number(fixedDay)),
           });
           onClose();
         }}

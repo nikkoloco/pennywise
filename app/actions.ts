@@ -13,8 +13,10 @@ import {
   quickTaps,
   recurring,
   upcoming,
+  users,
 } from "@/db/schema";
 import { EVENT_COLORS } from "@/lib/events";
+import type { PaySchedule } from "@/lib/payPeriod";
 import { firstOfMonth } from "@/lib/time";
 import { generateToken, hashToken } from "@/lib/tokens";
 import { currentUserId } from "@/lib/user";
@@ -144,6 +146,9 @@ export async function revokeApiToken(id: string) {
   revalidatePath("/settings/shortcuts");
 }
 
+/** A cutoff is counted within its month; a weekly pay schedule offers four. */
+const cutoffSchema = z.number().int().min(1).max(4);
+
 const eventSchema = z.object({
   name: z.string().trim().min(1).max(40),
   emoji: z.string().trim().min(1).max(8),
@@ -151,7 +156,8 @@ const eventSchema = z.object({
   eventMonth: z.string().regex(/^\d{4}-\d{2}$/),
   budgetMinor: z.number().int().positive(),
   isRecurringAnnual: z.boolean(),
-  cutoff: z.union([z.literal(1), z.literal(2)]),
+  /** Which of the month's cutoffs pays for it; weekly pay has up to four. */
+  cutoff: cutoffSchema,
 });
 
 export async function createEvent(input: z.infer<typeof eventSchema>) {
@@ -234,7 +240,7 @@ const upcomingSchema = z.object({
   name: z.string().trim().min(1).max(40),
   emoji: z.string().trim().min(1).max(8),
   approxMinor: z.number().int().positive(),
-  cutoff: z.union([z.literal(1), z.literal(2)]),
+  cutoff: cutoffSchema,
 });
 
 /**
@@ -307,8 +313,8 @@ const recurringSchema = z.object({
   unit: z.enum(["week", "month"]),
   /** Null runs forever, which is what a subscription usually does. */
   runsForMonths: z.number().int().min(1).max(600).nullable(),
-  /** Null lands in both cutoffs, which is what twice a month and weekly do. */
-  cutoff: z.union([z.literal(1), z.literal(2)]).nullable(),
+  /** Null lands in every cutoff, which is what twice a month and weekly do. */
+  cutoff: cutoffSchema.nullable(),
   startMonth: z.string().regex(/^\d{4}-\d{2}$/),
   /** The day it is taken when that is fixed, null when it varies. */
   payOnDay: z.number().int().min(1).max(31).nullable(),
@@ -467,4 +473,39 @@ export async function deleteCategory(id: string) {
     .where(and(eq(categories.id, z.uuid().parse(id)), eq(categories.userId, userId)));
   revalidatePath("/");
   revalidatePath("/settings");
+}
+
+const dayOfMonth = z.number().int().min(1).max(31);
+
+/** Paydays as the cadence needs them: one day, two ascending days, or a weekday. */
+const payScheduleSchema = z.discriminatedUnion("cadence", [
+  z.object({ cadence: z.literal("monthly"), paydays: z.tuple([dayOfMonth]) }),
+  z.object({
+    cadence: z.literal("twice_a_month"),
+    paydays: z.tuple([dayOfMonth, dayOfMonth]).refine(([first, second]) => first < second),
+  }),
+  z.object({ cadence: z.literal("weekly"), paydays: z.tuple([z.number().int().min(1).max(7)]) }),
+]);
+
+export type PayScheduleResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * When pay lands. Every screen names its cutoffs from this, so the whole app
+ * is revalidated rather than the few paths that happen to show one today.
+ */
+export async function setPaySchedule(input: PaySchedule): Promise<PayScheduleResult> {
+  const userId = await currentUserId();
+
+  const parsed = payScheduleSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: "Enter the days pay lands on, earlier one first." };
+  }
+
+  await db
+    .update(users)
+    .set({ payCadence: parsed.data.cadence, paydays: parsed.data.paydays })
+    .where(eq(users.id, userId));
+
+  revalidatePath("/", "layout");
+  return { ok: true };
 }

@@ -28,6 +28,9 @@ export const expenseSource = pgEnum("expense_source", ["app", "shortcut", "siri"
 /** The unit a recurring payment's interval is counted in. */
 export const recurringUnit = pgEnum("recurring_unit", ["week", "month"]);
 
+/** How often salary lands, which is what a cutoff is the stretch between. */
+export const payCadence = pgEnum("pay_cadence", ["monthly", "twice_a_month", "weekly"]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
@@ -49,6 +52,13 @@ export const users = pgTable("users", {
   timezone: text("timezone").notNull().default("Asia/Manila"),
   /** ISO weekday the week starts on: 1 = Monday. */
   weekStartsOn: integer("week_starts_on").notNull().default(1),
+  payCadence: payCadence("pay_cadence").notNull().default("twice_a_month"),
+  /**
+   * When pay lands: one or two days of the month, ascending, or for a weekly
+   * cadence a single ISO weekday. A day the month is too short for falls on
+   * its last day instead.
+   */
+  paydays: integer("paydays").array().notNull().default([10, 25]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

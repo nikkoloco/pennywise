@@ -17,7 +17,7 @@ import {
   startOfWeek,
   startOfYear,
 } from "date-fns";
-import { payPeriodLabel, payPeriodRange } from "./payPeriod";
+import { type PaySchedule, payPeriodLabel, payPeriodRange } from "./payPeriod";
 import { TZ, now } from "./time";
 
 /** "cutoff" is the stretch between paydays, which is how the money actually arrives. */
@@ -29,9 +29,9 @@ export const PERIODS: Period[] = ["cutoff", "week", "month", "year"];
 const WEEK = { weekStartsOn: 1 } as const;
 
 /** `offset` counts back from the current period: 0 is now, -1 the one before. */
-export function periodRange(period: Period, offset = 0) {
+export function periodRange(period: Period, offset: number, schedule: PaySchedule) {
   const base = now();
-  if (period === "cutoff") return payPeriodRange(base, offset);
+  if (period === "cutoff") return payPeriodRange(schedule, base, offset);
   if (period === "week") {
     const d = addWeeks(base, offset);
     return { start: startOfWeek(d, WEEK), end: endOfWeek(d, WEEK) };
@@ -44,8 +44,8 @@ export function periodRange(period: Period, offset = 0) {
   return { start: startOfYear(d), end: endOfYear(d) };
 }
 
-export function periodLabel(period: Period, offset = 0) {
-  const range = periodRange(period, offset);
+export function periodLabel(period: Period, offset: number, schedule: PaySchedule) {
+  const range = periodRange(period, offset, schedule);
   const { start, end } = range;
   if (period === "cutoff") return payPeriodLabel(range);
   if (period === "week") return `${format(start, "d MMM")} – ${format(end, "d MMM")}`;
@@ -57,8 +57,8 @@ export function periodLabel(period: Period, offset = 0) {
  * The x-axis of the bar chart: days across a week, weeks across a month, months
  * across a year.
  */
-export function bucketsFor(period: Period, offset = 0) {
-  const { start, end } = periodRange(period, offset);
+export function bucketsFor(period: Period, offset: number, schedule: PaySchedule) {
+  const { start, end } = periodRange(period, offset, schedule);
 
   if (period === "week") {
     return eachDayOfInterval({ start, end }).map((d) => ({
@@ -103,8 +103,13 @@ export function bucketKeyOf(day: string, period: Period) {
  * The comparable slice of the previous period. A period still in progress must
  * be measured against the same number of elapsed days, not a full one.
  */
-export function previousRange(period: Period, offset: number, elapsedDays?: number) {
-  const full = periodRange(period, offset - 1);
+export function previousRange(
+  period: Period,
+  offset: number,
+  schedule: PaySchedule,
+  elapsedDays?: number,
+) {
+  const full = periodRange(period, offset - 1, schedule);
   if (elapsedDays === undefined) return full;
 
   const capped = endOfDay(addDays(full.start, elapsedDays - 1));

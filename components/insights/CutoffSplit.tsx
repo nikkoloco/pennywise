@@ -2,6 +2,7 @@
 
 import { Amount } from "@/components/ui/Amount";
 import { Card, SectionLabel } from "@/components/ui/Card";
+import { usePaySchedule } from "@/components/PayScheduleProvider";
 import { cutoffLabel } from "@/lib/payPeriod";
 import type { byCutoff } from "@/lib/insights";
 
@@ -10,14 +11,15 @@ type Row = ReturnType<typeof byCutoff>[number];
 /**
  * The period split by pay packet.
  *
- * A calendar month is not how the money arrives: it comes twice, and what is
- * left depends on which packet you are spending from. Showing both halves
+ * A calendar month is not how the money arrives: it comes by cutoff, and what
+ * is left depends on which packet you are spending from. Showing each of them
  * answers the question the monthly total cannot.
  *
  * Hidden when there is only one row, where it would restate the total, and
  * when there are many, where a year of packets is a list nobody reads.
  */
 export function CutoffSplit({ rows }: { rows: Row[] }) {
+  const schedule = usePaySchedule();
   if (rows.length < 2 || rows.length > 6) return null;
 
   const largest = Math.max(...rows.map((r) => r.total));
@@ -32,7 +34,7 @@ export function CutoffSplit({ rows }: { rows: Row[] }) {
               <div className="flex items-baseline justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm text-sky-100">
-                    {cutoffLabel(row.cutoff)}
+                    {cutoffLabel(row.cutoff, schedule)}
                   </p>
                   <p className="text-xs text-sky-300">{row.label}</p>
                 </div>

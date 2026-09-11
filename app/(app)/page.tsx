@@ -5,6 +5,7 @@ import {
   getEvents,
   getEventSpend,
   getExpensesIn,
+  getPaySchedule,
   getQuickTaps,
   getTotalIn,
   getUpcoming,
@@ -20,7 +21,7 @@ export default async function Home() {
   const userId = await currentUserId();
   const day = dayRange();
   const month = monthRange();
-  const pay = payPeriodRange();
+  const pay = payPeriodRange(await getPaySchedule(userId));
 
   const [tiles, categories, today, monthTotal, payTotal, events, eventSpend, upcoming] =
     await Promise.all([
@@ -79,7 +80,7 @@ export default async function Home() {
           budgetMinor: c.budgetMinor,
           spentMinor: c.spentMinor,
         }))}
-        upcoming={upcoming.map((u) => ({ ...u, cutoff: u.cutoff === 2 ? 2 : 1 }) as const)}
+        upcoming={upcoming}
       />
     </main>
   );
