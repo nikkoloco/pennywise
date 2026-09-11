@@ -44,6 +44,12 @@ export const DEFAULT_CATEGORIES = [
     color: "swatch-3",
     children: ["Household supplies", "Appliances", "Furniture"],
   },
+  {
+    name: "Investments",
+    emoji: "📈",
+    color: "swatch-12",
+    children: ["Stocks", "Commodities", "Crypto"],
+  },
   { name: "Miscellaneous", emoji: "📦", color: "swatch-8", children: [] },
 ];
 
