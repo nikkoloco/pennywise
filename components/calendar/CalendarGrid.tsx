@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { deleteExpense, updateExpense } from "@/app/actions";
+import {
+  LogSheet,
+  type CategoryOption,
+  type EventOption,
+  type ExpenseDraft,
+} from "@/components/keypad/LogSheet";
 import { Amount } from "@/components/ui/Amount";
 import { SectionLabel } from "@/components/ui/Card";
 import { Sheet } from "@/components/ui/Sheet";
@@ -13,6 +20,9 @@ export type DayEntry = {
   day: string;
   amountMinor: number;
   note: string | null;
+  /** Carried so an entry can be reopened for correction. */
+  categoryId: string;
+  eventId: string | null;
   time: string;
   categoryName: string;
   categoryEmoji: string;
@@ -22,6 +32,10 @@ type Props = {
   monthKey: string;
   entries: DayEntry[];
   todayKey: string;
+  /** Entries from this day on can still be corrected; older ones are history. */
+  editableFrom: string;
+  categories: CategoryOption[];
+  events: EventOption[];
   monthTotal: number;
   prevMonthTotal: number;
   /** True while the month is still running, so the comparison is like for like. */
@@ -43,11 +57,16 @@ export function CalendarGrid({
   monthKey,
   entries,
   todayKey,
+  editableFrom,
+  categories,
+  events,
   monthTotal,
   prevMonthTotal,
   partial,
 }: Props) {
+  const [, startTransition] = useTransition();
   const [selected, setSelected] = useState<string | null>(null);
+  const [editing, setEditing] = useState<ExpenseDraft | null>(null);
 
   const [year, month] = monthKey.split("-").map(Number);
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -68,6 +87,13 @@ export function CalendarGrid({
   const selectedEntries = entries.filter((e) => e.day === selected);
   const selectedTotal = selectedEntries.reduce((n, e) => n + e.amountMinor, 0);
   const delta = monthTotal - prevMonthTotal;
+  const editable = selected !== null && selected >= editableFrom;
+
+  function save(amountMinor: number, categoryId: string, note: string, eventId: string | null) {
+    const id = editing!.id;
+    setEditing(null);
+    startTransition(() => updateExpense({ id, categoryId, amountMinor, note, eventId }));
+  }
 
   return (
     <>
@@ -142,20 +168,71 @@ export function CalendarGrid({
         </div>
         <ul className="divide-y divide-ink-700">
           {selectedEntries.map((entry) => (
-            <li key={entry.id} className="flex items-center gap-3 py-3">
-              <span className="text-lg">{entry.categoryEmoji}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-sky-100">{entry.categoryName}</p>
-                <p className="truncate text-xs text-sky-300">
-                  {entry.note ? `${entry.note} · ` : ""}
-                  {entry.time}
-                </p>
-              </div>
-              <Amount minor={entry.amountMinor} size="sm" tone="paper" />
+            <li key={entry.id} className="flex items-center">
+              {/* A recent row opens for correction; an old one is just read. */}
+              <button
+                type="button"
+                disabled={!editable}
+                onClick={() =>
+                  setEditing({
+                    id: entry.id,
+                    amountMinor: entry.amountMinor,
+                    categoryId: entry.categoryId,
+                    note: entry.note ?? "",
+                    eventId: entry.eventId,
+                  })
+                }
+                className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left"
+              >
+                <span className="text-lg">{entry.categoryEmoji}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-sky-100">{entry.categoryName}</p>
+                  <p className="truncate text-xs text-sky-300">
+                    {entry.note ? `${entry.note} · ` : ""}
+                    {entry.time}
+                  </p>
+                </div>
+                <Amount minor={entry.amountMinor} size="sm" tone="paper" />
+              </button>
+              {editable && (
+                <button
+                  type="button"
+                  onClick={() => startTransition(() => deleteExpense(entry.id))}
+                  aria-label={`Delete ${entry.categoryName}`}
+                  className="flex size-11 shrink-0 items-center justify-center text-sky-400"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              )}
             </li>
           ))}
         </ul>
+        {editable && (
+          <p className="mt-3 text-center text-xs text-sky-400">
+            Tap an entry to correct it, or the cross to remove it.
+          </p>
+        )}
       </Sheet>
+
+      <LogSheet
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        categories={categories}
+        events={events}
+        initialCategoryId={null}
+        initial={editing}
+        onSubmit={save}
+      />
     </>
   );
 }

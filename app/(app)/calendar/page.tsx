@@ -1,7 +1,9 @@
+import { subDays } from "date-fns";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { MonthObligations } from "@/components/calendar/MonthObligations";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
+  getCategories,
   getEvents,
   getEventSpend,
   getExpensesIn,
@@ -10,12 +12,14 @@ import {
   getTotalIn,
   getUpcoming,
 } from "@/db/queries";
+import { categoryGroups } from "@/lib/categories";
 import { buildEventCards } from "@/lib/events";
 import { monthObligations } from "@/lib/obligations";
 import {
   dayKey,
   monthKey,
   monthRangeOf,
+  now,
   previousMonthRange,
 } from "@/lib/time";
 import { currentUserId } from "@/lib/user";
@@ -28,19 +32,30 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
 
   // A month in progress is only compared against the same stretch of the last one.
   const todayKey = dayKey(new Date());
+  // Recent enough to still remember, so a slip can be corrected in place.
+  const editableFrom = dayKey(subDays(now(), 30));
   const partialThrough = key === monthKey() ? Number(todayKey.slice(8)) : undefined;
 
   const userId = await currentUserId();
-  const [entries, prevMonthTotal, recurring, events, eventSpend, upcoming, schedule] =
-    await Promise.all([
-      getExpensesIn(userId, monthRangeOf(key)),
-      getTotalIn(userId, previousMonthRange(key, partialThrough)),
-      getRecurring(userId),
-      getEvents(userId),
-      getEventSpend(userId),
-      getUpcoming(userId),
-      getPaySchedule(userId),
-    ]);
+  const [
+    entries,
+    prevMonthTotal,
+    recurring,
+    categories,
+    events,
+    eventSpend,
+    upcoming,
+    schedule,
+  ] = await Promise.all([
+    getExpensesIn(userId, monthRangeOf(key)),
+    getTotalIn(userId, previousMonthRange(key, partialThrough)),
+    getRecurring(userId),
+    getCategories(userId),
+    getEvents(userId),
+    getEventSpend(userId),
+    getUpcoming(userId),
+    getPaySchedule(userId),
+  ]);
 
   // What the month is committed to regardless of what has been spent in it.
   // Only worth showing from this month on: for a month already gone, the
@@ -65,6 +80,9 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
       <CalendarGrid
         monthKey={key}
         todayKey={todayKey}
+        editableFrom={editableFrom}
+        categories={categoryGroups(categories)}
+        events={planned.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
         monthTotal={entries.reduce((n, e) => n + e.amountMinor, 0)}
         prevMonthTotal={prevMonthTotal}
         partial={partialThrough !== undefined}
@@ -73,6 +91,8 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
           day: dayKey(e.spentAt),
           amountMinor: e.amountMinor,
           note: e.note,
+          categoryId: e.categoryId,
+          eventId: e.eventId,
           time: e.spentAt.toLocaleTimeString("en-PH", {
             hour: "numeric",
             minute: "2-digit",

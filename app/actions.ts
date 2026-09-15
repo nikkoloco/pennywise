@@ -78,6 +78,8 @@ export async function deleteExpense(id: string) {
     .delete(expenses)
     .where(and(eq(expenses.id, z.uuid().parse(id)), eq(expenses.userId, userId)));
   revalidatePath("/");
+  revalidatePath("/calendar");
+  revalidatePath("/insights");
 }
 
 const tileSchema = z.object({
