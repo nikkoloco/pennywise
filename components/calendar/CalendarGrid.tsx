@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { deleteExpense, updateExpense } from "@/app/actions";
+import { deleteExpense, logExpense, updateExpense } from "@/app/actions";
 import {
   LogSheet,
   type CategoryOption,
@@ -10,6 +10,7 @@ import {
   type ExpenseDraft,
 } from "@/components/keypad/LogSheet";
 import { Amount } from "@/components/ui/Amount";
+import { Button } from "@/components/ui/Button";
 import { SectionLabel } from "@/components/ui/Card";
 import { Sheet } from "@/components/ui/Sheet";
 import { formatCompact, formatMinor } from "@/lib/money";
@@ -32,7 +33,7 @@ type Props = {
   monthKey: string;
   entries: DayEntry[];
   todayKey: string;
-  /** Entries from this day on can still be corrected; older ones are history. */
+  /** Days from this one to today can still be filled in or corrected; older ones are history. */
   editableFrom: string;
   categories: CategoryOption[];
   events: EventOption[];
@@ -67,6 +68,7 @@ export function CalendarGrid({
   const [, startTransition] = useTransition();
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<ExpenseDraft | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const [year, month] = monthKey.split("-").map(Number);
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -87,12 +89,19 @@ export function CalendarGrid({
   const selectedEntries = entries.filter((e) => e.day === selected);
   const selectedTotal = selectedEntries.reduce((n, e) => n + e.amountMinor, 0);
   const delta = monthTotal - prevMonthTotal;
-  const editable = selected !== null && selected >= editableFrom;
+  const recent = (key: string) => key >= editableFrom && key <= todayKey;
+  const editable = selected !== null && recent(selected);
 
   function save(amountMinor: number, categoryId: string, note: string, eventId: string | null) {
-    const id = editing!.id;
+    const target = editing;
+    const day = selected!;
     setEditing(null);
-    startTransition(() => updateExpense({ id, categoryId, amountMinor, note, eventId }));
+    setAdding(false);
+    startTransition(() =>
+      target
+        ? updateExpense({ id: target.id, categoryId, amountMinor, note, eventId })
+        : logExpense({ categoryId, amountMinor, note, eventId, spentOn: day }),
+    );
   }
 
   return (
@@ -127,7 +136,7 @@ export function CalendarGrid({
               <button
                 key={key}
                 type="button"
-                onClick={() => total > 0 && setSelected(key)}
+                onClick={() => (total > 0 || recent(key)) && setSelected(key)}
                 className={`flex aspect-square flex-col items-center justify-center rounded-lg text-xs ${
                   HEAT[level(total)]
                 } ${
@@ -218,15 +227,25 @@ export function CalendarGrid({
           ))}
         </ul>
         {editable && (
-          <p className="mt-3 text-center text-xs text-sky-400">
-            Tap an entry to correct it, or the cross to remove it.
-          </p>
+          <>
+            {selectedEntries.length > 0 && (
+              <p className="mt-3 text-center text-xs text-sky-400">
+                Tap an entry to correct it, or the cross to remove it.
+              </p>
+            )}
+            <Button variant="secondary" onClick={() => setAdding(true)} className="mt-4 w-full">
+              Add an entry for this day
+            </Button>
+          </>
         )}
       </Sheet>
 
       <LogSheet
-        open={editing !== null}
-        onClose={() => setEditing(null)}
+        open={editing !== null || adding}
+        onClose={() => {
+          setEditing(null);
+          setAdding(false);
+        }}
         categories={categories}
         events={events}
         initialCategoryId={null}

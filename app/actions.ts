@@ -17,7 +17,7 @@ import {
 } from "@/db/schema";
 import { EVENT_COLORS } from "@/lib/events";
 import type { PaySchedule } from "@/lib/payPeriod";
-import { firstOfMonth } from "@/lib/time";
+import { firstOfMonth, noonOf } from "@/lib/time";
 import { generateToken, hashToken } from "@/lib/tokens";
 import { currentUserId } from "@/lib/user";
 
@@ -29,10 +29,13 @@ const logSchema = z.object({
   eventId: z.uuid().nullable().optional(),
   /** Set when this settles a recurring payment for the current cutoff. */
   recurringId: z.uuid().nullable().optional(),
+  /** A past day, "YYYY-MM-DD", when the entry is being filled in late. */
+  spentOn: z.iso.date().optional(),
 });
 
 export async function logExpense(input: z.infer<typeof logSchema>) {
-  const { categoryId, amountMinor, note, eventId, recurringId } = logSchema.parse(input);
+  const { categoryId, amountMinor, note, eventId, recurringId, spentOn } =
+    logSchema.parse(input);
   const userId = await currentUserId();
 
   await db.insert(expenses).values({
@@ -42,13 +45,15 @@ export async function logExpense(input: z.infer<typeof logSchema>) {
     note: note || null,
     eventId: eventId ?? null,
     recurringId: recurringId ?? null,
-    spentAt: new Date(),
+    spentAt: spentOn ? noonOf(spentOn) : new Date(),
   });
   if (eventId) await settleIfPaid(userId, eventId);
 
   revalidatePath("/");
   revalidatePath("/events");
   revalidatePath("/recurring");
+  revalidatePath("/calendar");
+  revalidatePath("/insights");
 }
 
 /**

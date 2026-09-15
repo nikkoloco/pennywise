@@ -94,6 +94,16 @@ export function dayLabel(key: string) {
   });
 }
 
+/**
+ * Noon on a Manila day. Used to stamp an entry logged after the fact, when
+ * only the day is known: noon is far from either edge, so no offset wobble
+ * can push it into the neighbouring day.
+ */
+export function noonOf(key: string) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new TZDate(y, m - 1, d, 12, 0, TZ);
+}
+
 /** "2026-03-01" from the database becomes the "2026-03" used everywhere here. */
 export function monthOf(stored: string) {
   return stored.slice(0, 7);
