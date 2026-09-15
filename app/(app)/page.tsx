@@ -12,7 +12,13 @@ import {
 } from "@/db/queries";
 import { categoryGroups } from "@/lib/categories";
 import { buildEventCards, plannedRemaining } from "@/lib/events";
-import { payPeriodLabel, payPeriodRange } from "@/lib/payPeriod";
+import {
+  cutoffsIn,
+  payPeriodLabel,
+  payPeriodMonth,
+  payPeriodOf,
+  payPeriodRange,
+} from "@/lib/payPeriod";
 import { dayRange, formatLongDate, monthKey, monthRange, now } from "@/lib/time";
 import { currentUserId } from "@/lib/user";
 
@@ -22,15 +28,25 @@ export default async function Home() {
   const userId = await currentUserId();
   const day = dayRange();
   const month = monthRange();
-  const pay = payPeriodRange(await getPaySchedule(userId));
+  const schedule = await getPaySchedule(userId);
+  const pay = payPeriodRange(schedule);
 
-  const [tiles, categories, today, monthTotal, payTotal, events, eventSpend, upcoming] =
+  // Every cutoff of the month the current pay packet belongs to, so the one
+  // being spent from is always among them, even when it runs past month end.
+  const payMonth = payPeriodMonth(pay);
+  const cutoffs = Array.from({ length: cutoffsIn(payMonth, schedule) }, (_, i) => {
+    const cutoff = i + 1;
+    const range = payPeriodOf(payMonth, cutoff, schedule);
+    return { cutoff, range, current: range.start.getTime() === pay.start.getTime() };
+  });
+
+  const [tiles, categories, today, monthTotal, cutoffTotals, events, eventSpend, upcoming] =
     await Promise.all([
       getQuickTaps(userId),
       getCategories(userId),
       getExpensesIn(userId, day),
       getTotalIn(userId, month),
-      getTotalIn(userId, pay),
+      Promise.all(cutoffs.map((c) => getTotalIn(userId, c.range))),
       getEvents(userId),
       getEventSpend(userId),
       getUpcoming(userId),
@@ -55,8 +71,12 @@ export default async function Home() {
         events={cards.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
         today={today}
         monthTotal={monthTotal}
-        payTotal={payTotal}
-        payLabel={payPeriodLabel(pay)}
+        cutoffs={cutoffs.map((c, i) => ({
+          cutoff: c.cutoff,
+          label: payPeriodLabel(c.range),
+          total: cutoffTotals[i],
+          current: c.current,
+        }))}
         planned={planned}
         plans={plans.map((c) => ({
           id: c.id,

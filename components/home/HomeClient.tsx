@@ -72,15 +72,23 @@ export type Plan = {
   spentMinor: number;
 };
 
+export type Cutoff = {
+  cutoff: number;
+  /** The two dates that bound the pay packet, e.g. "26 Aug – 10 Sep". */
+  label: string;
+  total: number;
+  /** The packet being spent from right now. */
+  current: boolean;
+};
+
 type Props = {
   tiles: Tile[];
   categories: CategoryOption[];
   events: EventOption[];
   today: Entry[];
   monthTotal: number;
-  /** Spend since the last payday, and the two dates that bound it. */
-  payTotal: number;
-  payLabel: string;
+  /** Every cutoff of the pay month, spent or not, so none of them is a mystery. */
+  cutoffs: Cutoff[];
   /** What this month's plans still expect to cost, on top of what is spent. */
   planned: number;
   plans: Plan[];
@@ -97,8 +105,7 @@ export function HomeClient({
   events,
   today,
   monthTotal,
-  payTotal,
-  payLabel,
+  cutoffs,
   planned,
   plans,
   upcoming,
@@ -123,10 +130,11 @@ export function HomeClient({
   );
 
   const dayTotal = entries.reduce((n, e) => n + e.amountMinor, 0);
-  // Today sits inside both windows, so an optimistic entry has to move both.
+  // Today sits inside the month and the current cutoff, so an optimistic
+  // entry has to move both.
   const settledToday = today.reduce((n, e) => n + e.amountMinor, 0);
-  const monthWithPending = monthTotal - settledToday + dayTotal;
-  const payWithPending = payTotal - settledToday + dayTotal;
+  const pending = dayTotal - settledToday;
+  const monthWithPending = monthTotal + pending;
 
   /** Covers subgroups too, since a logged category may be one level down. */
   function categoryFor(id: string) {
@@ -234,15 +242,26 @@ export function HomeClient({
           </p>
         </div>
 
-        <div className="relative mt-5 flex items-baseline justify-between">
-          <div>
-            <SectionLabel>This cutoff</SectionLabel>
-            <p className="mt-0.5 text-[11px] text-sky-400">{payLabel}</p>
-          </div>
-          <span className="text-sm font-bold text-sky-100">
-            {formatMinor(payWithPending)}
-          </span>
-        </div>
+        {/* One row per cutoff, the current one lit and the rest dimmed, so a
+            month's packets can be weighed against each other at a glance. */}
+        <ul className="relative mt-5 flex flex-col gap-3">
+          {cutoffs.map((c) => (
+            <li key={c.cutoff} className="flex items-baseline justify-between">
+              <div>
+                <SectionLabel>
+                  {cutoffLabel(c.cutoff, schedule)}
+                  {c.current && " · now"}
+                </SectionLabel>
+                <p className="mt-0.5 text-[11px] text-sky-400">{c.label}</p>
+              </div>
+              <span
+                className={`text-sm font-bold ${c.current ? "text-sky-100" : "text-sky-300"}`}
+              >
+                {formatMinor(c.current ? c.total + pending : c.total)}
+              </span>
+            </li>
+          ))}
+        </ul>
 
         <div className="relative mt-3 flex items-baseline justify-between">
           <SectionLabel>This month</SectionLabel>
