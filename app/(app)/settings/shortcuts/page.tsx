@@ -338,6 +338,30 @@ export default async function ShortcutsPage() {
         </Card>
       </section>
 
+      <section className="flex flex-col gap-3 px-6">
+        <SectionLabel>Variant · Paid later</SectionLabel>
+        <Card>
+          <p className="text-sm text-sky-200">
+            For a purchase on a credit card or with borrowed money, duplicate the
+            Shortcut, name it something like{" "}
+            <span className="text-gold-300">Log on card</span>, and add one more
+            Text field naming who is owed. Add a pay-back date too if you like:
+          </p>
+          <div className="mt-3">
+            <CopyField
+              multiline
+              value={`owedTo   (Text)    BPI card\ndueOn    (Text)    2026-10-15`}
+            />
+          </div>
+          <p className="mt-3 text-sm text-sky-200">
+            It is logged today but only counts against a cutoff once you tap{" "}
+            <Tap>Paid</Tap> on the Log tab. Leave{" "}
+            <span className="text-gold-300">owedTo</span> out or empty and it is
+            paid now, as before.
+          </p>
+        </Card>
+      </section>
+
       {/* ---------------------------------------------------------------- */}
 
       <section className="px-6">

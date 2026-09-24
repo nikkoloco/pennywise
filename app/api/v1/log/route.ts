@@ -22,6 +22,10 @@ const bodySchema = z.object({
   /** Category name, matched case-insensitively. */
   category: z.string().min(1),
   note: z.string().max(140).optional(),
+  /** The card or person to pay back, when it was not paid on the spot. */
+  owedTo: z.string().trim().max(40).optional(),
+  /** "YYYY-MM-DD" it has to be paid back by. Ignored without owedTo. */
+  dueOn: z.iso.date().optional(),
   /** Accepted here as well as in the Authorization header. */
   token: z.string().optional(),
   source: z.enum(["shortcut", "siri"]).default("shortcut"),
@@ -132,12 +136,16 @@ export async function POST(request: Request) {
     return fail(400, message, { available: available.map((c) => c.name) });
   }
 
+  // An empty string is what an unfilled Shortcut field sends, and means paid now.
+  const owedTo = parsed.data.owedTo || null;
   await db.insert(expenses).values({
     userId: auth.userId,
     categoryId: category.id,
     amountMinor,
     note: parsed.data.note?.trim() || null,
     spentAt: new Date(),
+    owedTo,
+    dueOn: owedTo ? (parsed.data.dueOn ?? null) : null,
     source: parsed.data.source,
   });
 
@@ -146,13 +154,15 @@ export async function POST(request: Request) {
     .set({ lastUsedAt: new Date() })
     .where(eq(apiTokens.id, auth.id));
 
-  const summary = `Logged ${(amountMinor / 100).toFixed(2)} to ${category.name}`;
+  const summary = `Logged ${(amountMinor / 100).toFixed(2)} to ${category.name}${
+    owedTo ? `, owed to ${owedTo}` : ""
+  }`;
   await record(200, summary, auth.userId);
 
   revalidatePath("/");
   revalidatePath("/events");
 
-  return Response.json({ ok: true, message: summary, amountMinor, category: category.name });
+  return Response.json({ ok: true, message: summary, amountMinor, category: category.name, owedTo });
 }
 
 /** A Shortcut left on the default method lands here. Say so, rather than 405. */
