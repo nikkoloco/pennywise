@@ -31,6 +31,7 @@ export function TodayList({ entries, onDelete, onEdit }: Props) {
                 <p className="truncate text-sm text-sky-100">{entry.categoryName}</p>
                 <p className="truncate text-xs text-sky-300">
                   {entry.note ? `${entry.note} · ` : ""}
+                  {entry.owed ? `owed to ${entry.owed.owedTo} · ` : ""}
                   {formatTime(entry.spentAt)}
                 </p>
               </div>

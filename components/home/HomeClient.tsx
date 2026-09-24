@@ -8,6 +8,7 @@ import {
   deleteExpense,
   deleteUpcoming,
   logExpense,
+  settleExpense,
   updateExpense,
   updateQuickTap,
   updateUpcoming,
@@ -22,12 +23,14 @@ import {
   type UpcomingInput,
   type UpcomingItem,
 } from "@/components/home/UpcomingSheet";
+import { OwedList, type OwedItem } from "@/components/home/OwedList";
 import { TodayList } from "@/components/home/TodayList";
 import {
   LogSheet,
   type CategoryOption,
   type EventOption,
   type ExpenseDraft,
+  type Owed,
 } from "@/components/keypad/LogSheet";
 import { Amount } from "@/components/ui/Amount";
 import { Card, SectionLabel } from "@/components/ui/Card";
@@ -48,6 +51,8 @@ export type Entry = {
   /** Carried so an entry can be reopened for correction. */
   categoryId: string;
   eventId: string | null;
+  /** Set while it is still to be paid back, so it has not left yet. */
+  owed: Owed | null;
   categoryName: string;
   categoryEmoji: string;
 };
@@ -93,6 +98,9 @@ type Props = {
   planned: number;
   plans: Plan[];
   upcoming: UpcomingItem[];
+  /** Purchases on a card or borrowed money, not yet paid back. */
+  owed: OwedItem[];
+  todayKey: string;
 };
 
 type Optimistic =
@@ -109,6 +117,8 @@ export function HomeClient({
   planned,
   plans,
   upcoming,
+  owed,
+  todayKey,
 }: Props) {
   const schedule = usePaySchedule();
   const [, startTransition] = useTransition();
@@ -132,8 +142,10 @@ export function HomeClient({
   const dayTotal = entries.reduce((n, e) => n + e.amountMinor, 0);
   // Today sits inside the month and the current cutoff, so an optimistic
   // entry has to move both.
-  const settledToday = today.reduce((n, e) => n + e.amountMinor, 0);
-  const pending = dayTotal - settledToday;
+  // Only money that left moves them; an entry still owed waits for its payback.
+  const paidOut = (list: Entry[]) =>
+    list.reduce((n, e) => n + (e.owed ? 0 : e.amountMinor), 0);
+  const pending = paidOut(entries) - paidOut(today);
   const monthWithPending = monthTotal + pending;
 
   /** Covers subgroups too, since a logged category may be one level down. */
@@ -151,6 +163,7 @@ export function HomeClient({
     categoryId: string,
     note: string,
     eventId: string | null = null,
+    owed: Owed | null = null,
   ) {
     const category = categoryFor(categoryId);
     startTransition(async () => {
@@ -163,12 +176,13 @@ export function HomeClient({
           spentAt: new Date(),
           categoryId,
           eventId,
+          owed,
           categoryName: category.name,
           categoryEmoji: category.emoji,
         },
       });
       try {
-        await logExpense({ categoryId, amountMinor, note: note || undefined, eventId });
+        await logExpense({ categoryId, amountMinor, note: note || undefined, eventId, ...owed });
       } catch {
         // No signal, or the write failed. Hold it rather than lose the tap.
         queueExpense({
@@ -176,6 +190,7 @@ export function HomeClient({
           amountMinor,
           note: note || undefined,
           eventId,
+          ...owed,
           categoryName: category.name,
           categoryEmoji: category.emoji,
           queuedAt: Date.now(),
@@ -202,11 +217,12 @@ export function HomeClient({
     categoryId: string,
     note: string,
     eventId: string | null,
+    owed: Owed | null,
   ) {
-    if (!editingEntry) return log(amountMinor, categoryId, note, eventId);
+    if (!editingEntry) return log(amountMinor, categoryId, note, eventId, owed);
     const id = editingEntry.id;
     setEditingEntry(null);
-    startTransition(() => updateExpense({ id, categoryId, amountMinor, note, eventId }));
+    startTransition(() => updateExpense({ id, categoryId, amountMinor, note, eventId, ...owed }));
   }
 
   function submitTile(tile: TileInput) {
@@ -279,6 +295,12 @@ export function HomeClient({
       </section>
 
       <Outbox />
+
+      <OwedList
+        items={owed}
+        todayKey={todayKey}
+        onSettle={(id) => startTransition(() => settleExpense(id))}
+      />
 
       {plans.length > 0 && (
         <section>
@@ -398,6 +420,7 @@ export function HomeClient({
                 categoryId: entry.categoryId,
                 note: entry.note ?? "",
                 eventId: entry.eventId,
+                owed: entry.owed,
               })
             }
           />

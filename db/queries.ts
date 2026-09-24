@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { cache } from "react";
 import type { PaySchedule } from "@/lib/payPeriod";
@@ -15,6 +15,12 @@ import {
 } from "./schema";
 
 type Range = { start: Date; end: Date };
+
+/**
+ * The moment money actually left. A purchase paid on the spot left when it was
+ * made; one bought on credit leaves when it is paid back, and is null until then.
+ */
+const cashAt = sql<Date | null>`coalesce(${expenses.settledAt}, case when ${expenses.owedTo} is null then ${expenses.spentAt} end)`;
 
 /** Who is signed in, and whether they have put a PIN on this account. */
 export async function getAccount(userId: string) {
@@ -79,6 +85,9 @@ export async function getExpensesIn(userId: string, range: Range) {
       /** Carried so an entry can be opened for correction, not just displayed. */
       categoryId: expenses.categoryId,
       eventId: expenses.eventId,
+      owedTo: expenses.owedTo,
+      dueOn: expenses.dueOn,
+      settledAt: expenses.settledAt,
       categoryName: categories.name,
       categoryEmoji: categories.emoji,
       categoryColor: categories.color,
@@ -99,6 +108,7 @@ export async function getExpensesIn(userId: string, range: Range) {
     .orderBy(desc(expenses.spentAt));
 }
 
+/** What was bought inside the window, however it was paid. Habits count this. */
 export async function getTotalIn(userId: string, range: Range) {
   const [row] = await db
     .select({ total: sql<number>`coalesce(sum(${expenses.amountMinor}), 0)::int` })
@@ -111,6 +121,39 @@ export async function getTotalIn(userId: string, range: Range) {
       ),
     );
   return row.total;
+}
+
+/**
+ * Money that actually left inside the window, which is what a pay packet is
+ * drawn down by. A purchase still owed has not left yet.
+ */
+export async function getPaidOutIn(userId: string, range: Range) {
+  const [row] = await db
+    .select({ total: sql<number>`coalesce(sum(${expenses.amountMinor}), 0)::int` })
+    .from(expenses)
+    .where(and(eq(expenses.userId, userId), gte(cashAt, range.start), lte(cashAt, range.end)));
+  return row.total;
+}
+
+/** Purchases still to be paid back, soonest deadline first, undated last. */
+export async function getOwed(userId: string) {
+  return db
+    .select({
+      id: expenses.id,
+      amountMinor: expenses.amountMinor,
+      note: expenses.note,
+      spentAt: expenses.spentAt,
+      owedTo: sql<string>`${expenses.owedTo}`,
+      dueOn: expenses.dueOn,
+      categoryName: categories.name,
+      categoryEmoji: categories.emoji,
+    })
+    .from(expenses)
+    .innerJoin(categories, eq(expenses.categoryId, categories.id))
+    .where(
+      and(eq(expenses.userId, userId), isNotNull(expenses.owedTo), isNull(expenses.settledAt)),
+    )
+    .orderBy(sql`${expenses.dueOn} asc nulls last`, asc(expenses.spentAt));
 }
 
 export async function getEvents(userId: string) {

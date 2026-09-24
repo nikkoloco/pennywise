@@ -7,6 +7,7 @@ import {
   getEvents,
   getEventSpend,
   getExpensesIn,
+  getOwed,
   getPaySchedule,
   getRecurring,
   getTotalIn,
@@ -46,6 +47,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
     eventSpend,
     upcoming,
     schedule,
+    owedItems,
   ] = await Promise.all([
     getExpensesIn(userId, monthRangeOf(key)),
     getTotalIn(userId, previousMonthRange(key, partialThrough)),
@@ -55,6 +57,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
     getEventSpend(userId),
     getUpcoming(userId),
     getPaySchedule(userId),
+    getOwed(userId),
   ]);
 
   // What the month is committed to regardless of what has been spent in it.
@@ -83,6 +86,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         editableFrom={editableFrom}
         categories={categoryGroups(categories)}
         events={planned.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
+        dues={owedItems.filter((o) => o.dueOn?.startsWith(key))}
         monthTotal={entries.reduce((n, e) => n + e.amountMinor, 0)}
         prevMonthTotal={prevMonthTotal}
         partial={partialThrough !== undefined}
@@ -93,6 +97,8 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
           note: e.note,
           categoryId: e.categoryId,
           eventId: e.eventId,
+          owed: e.owedTo ? { owedTo: e.owedTo, dueOn: e.dueOn } : null,
+          settled: e.settledAt !== null,
           time: e.spentAt.toLocaleTimeString("en-PH", {
             hour: "numeric",
             minute: "2-digit",

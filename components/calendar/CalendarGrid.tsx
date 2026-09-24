@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { deleteExpense, logExpense, updateExpense } from "@/app/actions";
+import { deleteExpense, logExpense, settleExpense, updateExpense } from "@/app/actions";
+import type { OwedItem } from "@/components/home/OwedList";
 import {
   LogSheet,
   type CategoryOption,
   type EventOption,
   type ExpenseDraft,
+  type Owed,
 } from "@/components/keypad/LogSheet";
 import { Amount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
@@ -24,6 +26,9 @@ export type DayEntry = {
   /** Carried so an entry can be reopened for correction. */
   categoryId: string;
   eventId: string | null;
+  /** Bought on credit or borrowed; still set once it has been paid back. */
+  owed: Owed | null;
+  settled: boolean;
   time: string;
   categoryName: string;
   categoryEmoji: string;
@@ -37,6 +42,8 @@ type Props = {
   editableFrom: string;
   categories: CategoryOption[];
   events: EventOption[];
+  /** Unpaid card and borrowed purchases whose pay-back date falls in this month. */
+  dues: OwedItem[];
   monthTotal: number;
   prevMonthTotal: number;
   /** True while the month is still running, so the comparison is like for like. */
@@ -61,6 +68,7 @@ export function CalendarGrid({
   editableFrom,
   categories,
   events,
+  dues,
   monthTotal,
   prevMonthTotal,
   partial,
@@ -86,21 +94,29 @@ export function CalendarGrid({
     return Math.ceil((total / heaviest) * 4);
   }
 
+  const dueDays = new Set(dues.map((d) => d.dueOn));
+  const selectedDues = dues.filter((d) => d.dueOn === selected);
   const selectedEntries = entries.filter((e) => e.day === selected);
   const selectedTotal = selectedEntries.reduce((n, e) => n + e.amountMinor, 0);
   const delta = monthTotal - prevMonthTotal;
   const recent = (key: string) => key >= editableFrom && key <= todayKey;
   const editable = selected !== null && recent(selected);
 
-  function save(amountMinor: number, categoryId: string, note: string, eventId: string | null) {
+  function save(
+    amountMinor: number,
+    categoryId: string,
+    note: string,
+    eventId: string | null,
+    owed: Owed | null,
+  ) {
     const target = editing;
     const day = selected!;
     setEditing(null);
     setAdding(false);
     startTransition(() =>
       target
-        ? updateExpense({ id: target.id, categoryId, amountMinor, note, eventId })
-        : logExpense({ categoryId, amountMinor, note, eventId, spentOn: day }),
+        ? updateExpense({ id: target.id, categoryId, amountMinor, note, eventId, ...owed })
+        : logExpense({ categoryId, amountMinor, note, eventId, spentOn: day, ...owed }),
     );
   }
 
@@ -136,8 +152,8 @@ export function CalendarGrid({
               <button
                 key={key}
                 type="button"
-                onClick={() => (total > 0 || recent(key)) && setSelected(key)}
-                className={`flex aspect-square flex-col items-center justify-center rounded-lg text-xs ${
+                onClick={() => (total > 0 || dueDays.has(key) || recent(key)) && setSelected(key)}
+                className={`relative flex aspect-square flex-col items-center justify-center rounded-lg text-xs ${
                   HEAT[level(total)]
                 } ${
                   key === todayKey
@@ -146,6 +162,12 @@ export function CalendarGrid({
                     : ""
                 }`}
               >
+                {dueDays.has(key) && (
+                  <span
+                    aria-label="Payment due"
+                    className="absolute top-1 right-1 size-1.5 rounded-full bg-gold-500"
+                  />
+                )}
                 <span className="font-semibold">{dayNumber}</span>
                 {total > 0 && (
                   <span className="text-[9px] opacity-80">{formatCompact(total)}</span>
@@ -175,6 +197,29 @@ export function CalendarGrid({
         <div className="mb-3 text-center">
           <Amount minor={selectedTotal} size="lg" />
         </div>
+        {selectedDues.length > 0 && (
+          <div className="mb-4">
+            <SectionLabel>Due to pay back</SectionLabel>
+            <ul className="mt-1 divide-y divide-ink-700">
+              {selectedDues.map((due) => (
+                <li key={due.id} className="flex items-center gap-3 py-3">
+                  <span className="text-lg">{due.categoryEmoji}</span>
+                  <p className="min-w-0 flex-1 truncate text-sm text-sky-100">
+                    {due.owedTo} · {due.note || due.categoryName}
+                  </p>
+                  <Amount minor={due.amountMinor} size="sm" tone="paper" />
+                  <button
+                    type="button"
+                    onClick={() => startTransition(() => settleExpense(due.id))}
+                    className="min-h-11 shrink-0 rounded-full bg-ink-700 px-3 text-xs font-semibold text-sky-200"
+                  >
+                    Paid
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <ul className="divide-y divide-ink-700">
           {selectedEntries.map((entry) => (
             <li key={entry.id} className="flex items-center">
@@ -189,6 +234,7 @@ export function CalendarGrid({
                     categoryId: entry.categoryId,
                     note: entry.note ?? "",
                     eventId: entry.eventId,
+                    owed: entry.owed,
                   })
                 }
                 className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left"
@@ -198,6 +244,9 @@ export function CalendarGrid({
                   <p className="truncate text-sm text-sky-100">{entry.categoryName}</p>
                   <p className="truncate text-xs text-sky-300">
                     {entry.note ? `${entry.note} · ` : ""}
+                    {entry.owed
+                      ? `${entry.settled ? "paid back to" : "owed to"} ${entry.owed.owedTo} · `
+                      : ""}
                     {entry.time}
                   </p>
                 </div>

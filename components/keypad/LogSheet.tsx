@@ -16,6 +16,8 @@ export type CategoryOption = {
   /** Subgroups, e.g. Groceries and Canteen under Food. Often empty. */
   children: SubcategoryOption[];
 };
+/** Who a purchase is still to be paid to, and by when. Absent when paid on the spot. */
+export type Owed = { owedTo: string; dueOn: string | null };
 export type EventOption = { id: string; name: string; emoji: string };
 
 /** A new expense that opens with its answers already in, e.g. from a plan. */
@@ -32,6 +34,7 @@ export type ExpenseDraft = {
   categoryId: string;
   note: string;
   eventId: string | null;
+  owed: Owed | null;
 };
 
 type Props = {
@@ -49,6 +52,7 @@ type Props = {
     categoryId: string,
     note: string,
     eventId: string | null,
+    owed: Owed | null,
   ) => void;
 };
 
@@ -93,12 +97,16 @@ function LogForm({
   const [childName, setChildName] = useState("");
   const [note, setNote] = useState(given?.note ?? "");
   const [eventId, setEventId] = useState<string | null>(given?.eventId ?? null);
+  const [payLater, setPayLater] = useState(initial?.owed != null);
+  const [owedTo, setOwedTo] = useState(initial?.owed?.owedTo ?? "");
+  const [dueOn, setDueOn] = useState(initial?.owed?.dueOn ?? "");
 
   const group = categories.find((c) => c.id === groupId) ?? null;
   // The subgroup is the more precise answer, so it wins when one is chosen.
   const categoryId = childId ?? groupId;
   const amount = draftToMinor(draft);
-  const ready = amount > 0 && categoryId !== null;
+  const owed = payLater && owedTo.trim() ? { owedTo: owedTo.trim(), dueOn: dueOn || null } : null;
+  const ready = amount > 0 && categoryId !== null && (!payLater || owed !== null);
 
   function pickGroup(id: string) {
     setGroupId(id);
@@ -194,6 +202,44 @@ function LogForm({
         className="min-h-11 rounded-2xl bg-ink-700 px-4 text-sm text-sky-100 placeholder:text-sky-400 focus:outline-none"
       />
 
+      <div>
+        <div className="flex gap-2">
+          {[false, true].map((later) => (
+            <button
+              key={String(later)}
+              type="button"
+              onClick={() => setPayLater(later)}
+              className={`rounded-full px-3 py-2 text-sm ${
+                payLater === later
+                  ? "bg-sky-400 font-semibold text-ink-900"
+                  : "bg-ink-700 text-sky-200"
+              }`}
+            >
+              {later ? "Pay later" : "Paid now"}
+            </button>
+          ))}
+        </div>
+        {payLater && (
+          <div className="mt-2 flex gap-2">
+            <input
+              value={owedTo}
+              onChange={(e) => setOwedTo(e.target.value)}
+              placeholder="Card or person"
+              maxLength={40}
+              aria-label="Who this is owed to"
+              className="min-h-11 min-w-0 flex-1 rounded-2xl bg-ink-700 px-4 text-sm text-sky-100 placeholder:text-sky-400 focus:outline-none"
+            />
+            <input
+              type="date"
+              value={dueOn}
+              onChange={(e) => setDueOn(e.target.value)}
+              aria-label="Pay back by"
+              className="min-h-11 rounded-2xl bg-ink-700 px-3 text-sm text-sky-100 focus:outline-none"
+            />
+          </div>
+        )}
+      </div>
+
       {events.length > 0 && (
         <div>
           {/* Umber throughout: attributing spend to a plan is the one place the
@@ -236,7 +282,7 @@ function LogForm({
 
       <Button
         onClick={() => {
-          onSubmit(amount, categoryId!, note.trim(), eventId);
+          onSubmit(amount, categoryId!, note.trim(), eventId, owed);
           onClose();
         }}
         className={ready ? "" : "pointer-events-none opacity-40"}

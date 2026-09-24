@@ -5,9 +5,10 @@ import {
   getEvents,
   getEventSpend,
   getExpensesIn,
+  getOwed,
+  getPaidOutIn,
   getPaySchedule,
   getQuickTaps,
-  getTotalIn,
   getUpcoming,
 } from "@/db/queries";
 import { categoryGroups } from "@/lib/categories";
@@ -19,7 +20,7 @@ import {
   payPeriodOf,
   payPeriodRange,
 } from "@/lib/payPeriod";
-import { dayRange, formatLongDate, monthKey, monthRange, now } from "@/lib/time";
+import { dayKey, dayRange, formatLongDate, monthKey, monthRange, now } from "@/lib/time";
 import { currentUserId } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
@@ -40,16 +41,19 @@ export default async function Home() {
     return { cutoff, range, current: range.start.getTime() === pay.start.getTime() };
   });
 
-  const [tiles, categories, today, monthTotal, cutoffTotals, events, eventSpend, upcoming] =
+  // Totals count money that has left, so a purchase still owed on a card or
+  // to a friend lands in the cutoff it is paid back in, not the one it was bought in.
+  const [tiles, categories, today, monthTotal, cutoffTotals, events, eventSpend, upcoming, owed] =
     await Promise.all([
       getQuickTaps(userId),
       getCategories(userId),
       getExpensesIn(userId, day),
-      getTotalIn(userId, month),
-      Promise.all(cutoffs.map((c) => getTotalIn(userId, c.range))),
+      getPaidOutIn(userId, month),
+      Promise.all(cutoffs.map((c) => getPaidOutIn(userId, c.range))),
       getEvents(userId),
       getEventSpend(userId),
       getUpcoming(userId),
+      getOwed(userId),
     ]);
 
   // Only what is due this month, in cutoff order. Home is the screen you open
@@ -69,7 +73,12 @@ export default async function Home() {
         tiles={tiles}
         categories={categoryGroups(categories)}
         events={cards.map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }))}
-        today={today}
+        today={today.map((e) => ({
+          ...e,
+          owed: e.owedTo && !e.settledAt ? { owedTo: e.owedTo, dueOn: e.dueOn } : null,
+        }))}
+        owed={owed}
+        todayKey={dayKey(now())}
         monthTotal={monthTotal}
         cutoffs={cutoffs.map((c, i) => ({
           cutoff: c.cutoff,

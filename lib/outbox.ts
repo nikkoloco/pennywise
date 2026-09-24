@@ -3,6 +3,8 @@ export type PendingExpense = {
   amountMinor: number;
   note?: string;
   eventId: string | null;
+  owedTo?: string;
+  dueOn?: string | null;
   categoryName: string;
   categoryEmoji: string;
   queuedAt: number;

@@ -31,10 +31,14 @@ const logSchema = z.object({
   recurringId: z.uuid().nullable().optional(),
   /** A past day, "YYYY-MM-DD", when the entry is being filled in late. */
   spentOn: z.iso.date().optional(),
+  /** The card or person to pay back, when it was not paid on the spot. */
+  owedTo: z.string().trim().min(1).max(40).nullish(),
+  /** The day it has to be paid back by. Only meaningful alongside owedTo. */
+  dueOn: z.iso.date().nullish(),
 });
 
 export async function logExpense(input: z.infer<typeof logSchema>) {
-  const { categoryId, amountMinor, note, eventId, recurringId, spentOn } =
+  const { categoryId, amountMinor, note, eventId, recurringId, spentOn, owedTo, dueOn } =
     logSchema.parse(input);
   const userId = await currentUserId();
 
@@ -46,6 +50,8 @@ export async function logExpense(input: z.infer<typeof logSchema>) {
     eventId: eventId ?? null,
     recurringId: recurringId ?? null,
     spentAt: spentOn ? noonOf(spentOn) : new Date(),
+    owedTo: owedTo ?? null,
+    dueOn: owedTo ? (dueOn ?? null) : null,
   });
   if (eventId) await settleIfPaid(userId, eventId);
 
@@ -75,6 +81,18 @@ async function settleIfPaid(userId: string, eventId: string) {
   if (spent < plan.budgetMinor) return;
 
   await db.update(events).set({ isArchived: true }).where(eq(events.id, eventId));
+}
+
+/** Paying back an owed purchase is the moment the money actually leaves. */
+export async function settleExpense(id: string) {
+  const userId = await currentUserId();
+  await db
+    .update(expenses)
+    .set({ settledAt: new Date() })
+    .where(and(eq(expenses.id, z.uuid().parse(id)), eq(expenses.userId, userId)));
+  revalidatePath("/");
+  revalidatePath("/calendar");
+  revalidatePath("/insights");
 }
 
 export async function deleteExpense(id: string) {
@@ -394,7 +412,8 @@ const withId = <T extends z.ZodRawShape>(shape: z.ZodObject<T>) =>
   shape.extend({ id: z.uuid() });
 
 export async function updateExpense(input: z.infer<ReturnType<typeof withId<typeof logSchema.shape>>>) {
-  const { id, categoryId, amountMinor, note, eventId } = withId(logSchema).parse(input);
+  const { id, categoryId, amountMinor, note, eventId, owedTo, dueOn } =
+    withId(logSchema).parse(input);
   const userId = await currentUserId();
 
   await db
@@ -404,6 +423,10 @@ export async function updateExpense(input: z.infer<ReturnType<typeof withId<type
       amountMinor,
       note: note || null,
       eventId: eventId ?? null,
+      owedTo: owedTo ?? null,
+      dueOn: owedTo ? (dueOn ?? null) : null,
+      // Paid on the spot after all: nothing is left to settle.
+      ...(owedTo ? {} : { settledAt: null }),
     })
     .where(and(eq(expenses.id, id), eq(expenses.userId, userId)));
   if (eventId) await settleIfPaid(userId, eventId);

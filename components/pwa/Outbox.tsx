@@ -42,6 +42,8 @@ export function Outbox() {
           amountMinor: item.amountMinor,
           note: item.note,
           eventId: item.eventId,
+          owedTo: item.owedTo,
+          dueOn: item.dueOn,
         });
         remaining.shift();
         writeOutbox(remaining);

@@ -177,6 +177,16 @@ export const expenses = pgTable(
     amountMinor: integer("amount_minor").notNull(),
     note: text("note"),
     spentAt: timestamp("spent_at", { withTimezone: true }).notNull(),
+    /**
+     * Set when the purchase went on a credit card or was borrowed from someone,
+     * so the money has not left yet. It is the card or person to pay back.
+     * Null means it was paid on the spot.
+     */
+    owedTo: text("owed_to"),
+    /** The day it must be paid back by, when there is one. */
+    dueOn: date("due_on"),
+    /** When an owed purchase was paid back. Money leaves on this day, not spentAt. */
+    settledAt: timestamp("settled_at", { withTimezone: true }),
     source: expenseSource("source").notNull().default("app"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
