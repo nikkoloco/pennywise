@@ -15,6 +15,10 @@ export type InsightEntry = {
   groupName: string;
   groupEmoji: string;
   groupColor: string;
+  /** The card or person it was put on, when it was not paid on the spot. */
+  owedTo: string | null;
+  /** Whether an owed entry has been paid back yet. */
+  settled: boolean;
 };
 
 const WEEKDAY_NAMES = [
@@ -123,4 +127,23 @@ export function byCutoff(entries: InsightEntry[], schedule: PaySchedule) {
   }
 
   return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+/**
+ * What went on a card or borrowed money, by who is owed, largest first. Each
+ * row carries how much of it is still unpaid, so a card that has been cleared
+ * reads differently from one that is still running.
+ */
+export function byLender(entries: InsightEntry[]) {
+  const map = new Map<string, { owedTo: string; total: number; unpaid: number }>();
+
+  for (const entry of entries) {
+    if (!entry.owedTo) continue;
+    const row = map.get(entry.owedTo) ?? { owedTo: entry.owedTo, total: 0, unpaid: 0 };
+    row.total += entry.amountMinor;
+    if (!entry.settled) row.unpaid += entry.amountMinor;
+    map.set(entry.owedTo, row);
+  }
+
+  return [...map.values()].sort((a, b) => b.total - a.total);
 }

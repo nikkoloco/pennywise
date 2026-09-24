@@ -4,10 +4,17 @@ import { useState } from "react";
 import { usePaySchedule } from "@/components/PayScheduleProvider";
 import { CategoryDonut } from "@/components/insights/CategoryDonut";
 import { CutoffSplit } from "@/components/insights/CutoffSplit";
+import { OwedSplit } from "@/components/insights/OwedSplit";
 import { PeriodBars } from "@/components/insights/PeriodBars";
 import { Amount } from "@/components/ui/Amount";
 import { Card, SectionLabel } from "@/components/ui/Card";
-import { byCategory, byCutoff, bucketTotals, type InsightEntry } from "@/lib/insights";
+import {
+  byCategory,
+  byCutoff,
+  byLender,
+  bucketTotals,
+  type InsightEntry,
+} from "@/lib/insights";
 import type { Period } from "@/lib/period";
 
 type Props = {
@@ -86,6 +93,11 @@ export function InsightsClient({ entries, period, offset, habits }: Props) {
       {/* Follows the selection like the bars do, so donut, chart, split and
           list all describe the same slice of spending. */}
       <CutoffSplit rows={byCutoff(listed, schedule)} />
+
+      <OwedSplit
+        rows={byLender(listed)}
+        total={listed.reduce((n, e) => n + e.amountMinor, 0)}
+      />
 
       {habits}
 

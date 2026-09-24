@@ -57,6 +57,8 @@ export default async function InsightsPage({ searchParams }: PageProps<"/insight
     groupName: e.groupName,
     groupEmoji: e.groupEmoji,
     groupColor: e.groupColor,
+    owedTo: e.owedTo,
+    settled: e.settledAt !== null,
   }));
 
   return (
