@@ -135,6 +135,30 @@ export async function getPaidOutIn(userId: string, range: Range) {
   return row.total;
 }
 
+/**
+ * Pay-later purchases due back inside a month, paid or not. Like a recurring
+ * payment, it is something the month is committed to either way.
+ */
+export async function getOwedDueIn(userId: string, month: string) {
+  return db
+    .select({
+      id: expenses.id,
+      amountMinor: expenses.amountMinor,
+      owedTo: sql<string>`${expenses.owedTo}`,
+      dueOn: sql<string>`${expenses.dueOn}`,
+      settled: sql<boolean>`${expenses.settledAt} is not null`,
+    })
+    .from(expenses)
+    .where(
+      and(
+        eq(expenses.userId, userId),
+        isNotNull(expenses.owedTo),
+        sql`to_char(${expenses.dueOn}, 'YYYY-MM') = ${month}`,
+      ),
+    )
+    .orderBy(asc(expenses.dueOn));
+}
+
 /** Purchases still to be paid back, soonest deadline first, undated last. */
 export async function getOwed(userId: string) {
   return db

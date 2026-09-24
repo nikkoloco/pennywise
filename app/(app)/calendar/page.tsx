@@ -8,6 +8,7 @@ import {
   getEventSpend,
   getExpensesIn,
   getOwed,
+  getOwedDueIn,
   getPaySchedule,
   getRecurring,
   getTotalIn,
@@ -48,6 +49,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
     upcoming,
     schedule,
     owedItems,
+    owedDue,
   ] = await Promise.all([
     getExpensesIn(userId, monthRangeOf(key)),
     getTotalIn(userId, previousMonthRange(key, partialThrough)),
@@ -58,6 +60,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
     getUpcoming(userId),
     getPaySchedule(userId),
     getOwed(userId),
+    getOwedDueIn(userId, key),
   ]);
 
   // What the month is committed to regardless of what has been spent in it.
@@ -76,7 +79,8 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
           monthKey={key}
           recurringMinor={owed.recurringMinor}
           plannedMinor={owed.plannedMinor}
-          totalMinor={owed.totalMinor}
+          payBack={owedDue}
+          totalMinor={owed.totalMinor + owedDue.reduce((n, o) => n + o.amountMinor, 0)}
           guessesMinor={guesses}
         />
       )}
