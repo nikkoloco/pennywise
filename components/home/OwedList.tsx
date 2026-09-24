@@ -2,7 +2,6 @@
 
 import { Amount } from "@/components/ui/Amount";
 import { SectionLabel } from "@/components/ui/Card";
-import { formatMinor } from "@/lib/money";
 import { dayLabel } from "@/lib/time";
 
 export type OwedItem = {
@@ -28,14 +27,10 @@ type Props = {
 export function OwedList({ items, todayKey, onSettle }: Props) {
   if (items.length === 0) return null;
 
-  const total = items.reduce((n, i) => n + i.amountMinor, 0);
-
+  // No total here: the summary above carries it as "Still owed".
   return (
     <section className="px-6">
-      <div className="flex items-baseline justify-between">
-        <SectionLabel>Still to pay back</SectionLabel>
-        <span className="text-sm font-bold text-sky-100">{formatMinor(total)}</span>
-      </div>
+      <SectionLabel>Still to pay back</SectionLabel>
       <ul className="mt-2 divide-y divide-ink-700">
         {items.map((item) => (
           <li key={item.id} className="flex items-center gap-3 py-3">

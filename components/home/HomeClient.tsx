@@ -147,6 +147,11 @@ export function HomeClient({
     list.reduce((n, e) => n + (e.owed ? 0 : e.amountMinor), 0);
   const pending = paidOut(entries) - paidOut(today);
   const monthWithPending = monthTotal + pending;
+  // The reverse: a pay-later entry not yet written still adds to what is owed.
+  const unpaid = (list: Entry[]) =>
+    list.reduce((n, e) => n + (e.owed ? e.amountMinor : 0), 0);
+  const owedNow =
+    owed.reduce((n, o) => n + o.amountMinor, 0) + unpaid(entries) - unpaid(today);
 
   /** Covers subgroups too, since a logged category may be one level down. */
   function categoryFor(id: string) {
@@ -291,6 +296,14 @@ export function HomeClient({
           <p className="relative mt-1 text-right text-xs text-umber-300">
             {formatMinor(monthWithPending)} spent · {formatMinor(planned)} still planned
           </p>
+        )}
+        {owedNow > 0 && (
+          /* Gold, apart from the totals: this has been bought but has not
+             left yet, so it is in none of the figures above. */
+          <div className="relative mt-3 flex items-baseline justify-between">
+            <SectionLabel>Still owed</SectionLabel>
+            <span className="text-sm font-bold text-gold-300">{formatMinor(owedNow)}</span>
+          </div>
         )}
       </section>
 
