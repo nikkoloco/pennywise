@@ -125,3 +125,12 @@ export function monthsUntil(monthKey: string, todayKey: string) {
   const [by, bm] = todayKey.split("-").map(Number);
   return (ay - by) * 12 + (am - bm);
 }
+
+/** Whole days from one day key to another, negative when `to` is earlier. */
+export function daysBetween(from: string, to: string) {
+  const utc = (key: string) => {
+    const [y, m, d] = key.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((utc(to) - utc(from)) / 86_400_000);
+}

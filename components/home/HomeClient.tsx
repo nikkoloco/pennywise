@@ -39,7 +39,7 @@ import { Outbox } from "@/components/pwa/Outbox";
 import { countdownLabel } from "@/lib/events";
 import { usePaySchedule } from "@/components/PayScheduleProvider";
 import { cutoffCount, cutoffLabel, ordinal } from "@/lib/payPeriod";
-import { monthLabel } from "@/lib/time";
+import { daysBetween, monthLabel } from "@/lib/time";
 import { formatMinor } from "@/lib/money";
 import { queueExpense } from "@/lib/outbox";
 
@@ -103,6 +103,16 @@ type Props = {
   todayKey: string;
 };
 
+/** How far ahead a pay-back date is close enough to flag at the top. */
+const DUE_SOON_DAYS = 7;
+
+function dueWhen(days: number) {
+  if (days < 0) return `overdue by ${-days} ${-days === 1 ? "day" : "days"}`;
+  if (days === 0) return "due today";
+  if (days === 1) return "due tomorrow";
+  return `due in ${days} days`;
+}
+
 type Optimistic =
   | { kind: "add"; entry: Entry }
   | { kind: "remove"; id: string };
@@ -152,6 +162,12 @@ export function HomeClient({
     list.reduce((n, e) => n + (e.owed ? e.amountMinor : 0), 0);
   const owedNow =
     owed.reduce((n, o) => n + o.amountMinor, 0) + unpaid(entries) - unpaid(today);
+  // Only what needs paying within the week, or already should have been.
+  // Further out it is in the list below; up here it would just be noise.
+  const dueSoon = owed
+    .filter((item) => item.dueOn !== null)
+    .map((item) => ({ item, days: daysBetween(todayKey, item.dueOn!) }))
+    .filter(({ days }) => days <= DUE_SOON_DAYS);
 
   /** Covers subgroups too, since a logged category may be one level down. */
   function categoryFor(id: string) {
@@ -304,6 +320,15 @@ export function HomeClient({
             <SectionLabel>Still owed</SectionLabel>
             <span className="text-sm font-bold text-gold-300">{formatMinor(owedNow)}</span>
           </div>
+        )}
+        {dueSoon.length > 0 && (
+          <ul className="relative mt-1 flex flex-col gap-0.5 text-right text-xs">
+            {dueSoon.map(({ item, days }) => (
+              <li key={item.id} className={days < 0 ? "text-gold-500" : "text-gold-300"}>
+                {item.owedTo} {formatMinor(item.amountMinor)} {dueWhen(days)}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 
